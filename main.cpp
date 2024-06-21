@@ -89,8 +89,7 @@ int main() {
         ind.resize(numIndexes / t.second);
         in.read((char *)ind.data(), sizeof(int) * ind.size());
         elems.push_back(std::make_pair(
-            t.first, ind)); // Заполняем вектор elems парами номер КЭ - список
-                            // узлов, которые в него включены
+            t.first, ind)); // Заполняем вектор elems парами Тип элемента - список узлов
       }
     }
   }
