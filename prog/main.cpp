@@ -1,26 +1,22 @@
-//
-// КОДИРОВКА ТЕКСТА СТРОГО UTF-8
-//
-
-#include <array>
+﻿#include <array>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <set>
 #include <vector>
 
-using namespace std;
-
 int main() {
-  // setlocale(LC_ALL, "rus");
+  setlocale(LC_ALL, "rus");
+
   // crd
   struct Node {
     float x, y, z;
   };
   std::vector<Node> crd;
   {
-    // Не должно быть жестко прописанных путей в коде
-    std::ifstream in("crd.sba", std::ifstream::binary);
+    std::ifstream in("crd.sba",
+                     std::ifstream::binary);
     if (!in.good())
       throw std::runtime_error("Crd");
     int numNodes, kort;
@@ -28,8 +24,8 @@ int main() {
     in.read((char *)&kort, sizeof(int));
     numNodes /= kort;
     crd.resize(numNodes);
-    std::vector<float> tmp;
-    tmp.resize(numNodes * kort);
+    std::cout << numNodes << "\t" << kort << std::endl;
+    std::vector<float> tmp(numNodes * kort);
     in.read((char *)tmp.data(), sizeof(float) * tmp.size());
 
     for (size_t ct = 0; ct < numNodes; ++ct) {
@@ -40,71 +36,85 @@ int main() {
   }
   const size_t numNodes = crd.size();
 
-  // mesh crd info
+  // Находим максимальную и минимальную координаты по каждой оси
+  float maxX = std::numeric_limits<float>::min();
+  float minX = std::numeric_limits<float>::max();
+  float maxY = std::numeric_limits<float>::min();
+  float minY = std::numeric_limits<float>::max();
+  float maxZ = std::numeric_limits<float>::min();
+  float minZ = std::numeric_limits<float>::max();
+
+  for (const auto &node : crd) {
+    maxX = std::max(maxX, node.x);
+    minX = std::min(minX, node.x);
+    maxY = std::max(maxY, node.y);
+    minY = std::min(minY, node.y);
+    maxZ = std::max(maxZ, node.z);
+    minZ = std::min(minZ, node.z);
+  }
+
+  // Вывод результата
+  std::cout << "Максимальная координата X: " << maxX << std::endl;
+  std::cout << "Минимальная координата X: " << minX << std::endl;
+  std::cout << "Максимальная координата Y: " << maxY << std::endl;
+  std::cout << "Минимальная координата Y: " << minY << std::endl;
+  std::cout << "Максимальная координата Z: " << maxZ << std::endl;
+  std::cout << "Минимальная координата Z: " << minZ << std::endl;
 
   using indexes = std::vector<int>;
 
   std::vector<std::pair<int, indexes>> elems;
+
   // ind
   {
-    // Не должно быть жестко прописанных путей в коде
-    std::ifstream in("ind.sba", std::ifstream::binary);
+    std::ifstream in("ind.sba",
+                     std::ifstream::binary);
     if (!in.good())
       throw std::runtime_error("Ind");
     int numTypes;
     in.read((char *)&numTypes, sizeof(int));
-    std::vector<std::pair<int, int>> types;
-    types.resize(numTypes);
+    std::vector<std::pair<int, int>> types(numTypes);
     for (auto &t : types) {
       in.read((char *)&(t.first), sizeof(int));
-      std::cout << t.first << std::endl;
       in.read((char *)&(t.second), sizeof(int));
-      std::cout << t.second << std::endl;
     }
-    // read
 
+    int indexElem = 0;
     for (auto t : types) {
       int numIndexes;
-      in.read((char *)&numIndexes,
-              sizeof(int)); // Ñ÷èòûâàåì äëèíó ìàññèâà èíäåêñîâ
-      std::cout << numIndexes << std::endl;
-      for (int indexElement = 0; indexElement < t.second; ++indexElement) {
+      in.read((char *)&numIndexes, sizeof(int));
+
+      for (int i = 0; i < t.second; ++i) {
         indexes ind;
         ind.resize(numIndexes / t.second);
         in.read((char *)ind.data(), sizeof(int) * ind.size());
-        // Читерство. У нас элементы лежат в векторе - контейнере с произвольным
-        // доступом. Нет никакого смысла класть туда еще и номер элемента. Тут
-        // должен был быть признак типа для отличения элементов по типу.
         elems.push_back(std::make_pair(
-            indexElement, ind)); // Çàïîëíÿåì âåêòîð elems ïàðàìè íîìåð ÊÝ -
-                                 // ñïèñîê óçëîâ, êîòîðûå â íåãî âêëþ÷åíû
+            t.first, ind)); // Заполняем вектор elems парами номер КЭ - список
+                            // узлов, которые в него включены
       }
     }
   }
 
-  // Ñîçäàåì ìàïó äëÿ õðàíåíèÿ èíäåêñàöèè óçëîâ
-  map<int, set<int>> elemsOfNodeID;
+  // Создаем мапу для хранения информации о узлах и принадлежащих им конечных
+  // элементах
+  std::map<int, std::vector<int>> nodeElements;
 
-  // Çàïîëíÿåì ìàïó
-  for (const auto &el : elems) {
-    for (const auto &node : el.second) {
-      // См. выше - в первом поле должен лежать признак элемента (его тим), а не
-      // номер элемента
-      elemsOfNodeID[node].insert(el.first);
+  // Заполняем вектор nodeElements
+  for (size_t i = 0; i < elems.size(); ++i) {
+    for (const auto &node : elems[i].second) {
+      nodeElements[node].push_back(i + 1); // Добавляем элемент в вектор узла
     }
   }
 
-  // Âûâîäèì ðåçóëüòàò
-  for (const auto &it : elemsOfNodeID) {
-    cout << it.first << " - "; // it.first - êëþ÷ (íîìåð óçëà)
-    for (const auto &el : it.second) { // it.second - íàáîð èíäåêñîâ ÊÝ
-      cout << el << " ";
+  // Выводим полученный вектор
+  std::cout << "Вектор nodeElements:" << std::endl;
+  for (const auto &item : nodeElements) { // Перебираем пары в nodeElements
+    std::cout << "  " << item.first << "  -  "; // Выводим ключ (узел)
+    for (const auto &element : item.second) { // Перебираем элементы узла
+      std::cout << "  " << element << "  ";
     }
-    cout << endl;
+    std::cout << std::endl;
   }
-
-  // Это зачем?
-  // system("pause");
 
   return 0;
 }
