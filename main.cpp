@@ -27,57 +27,64 @@ struct Element {
 
   // Точки интегрирования (по умолчанию, для куба, центр в (0, 0, 0))
   std::vector<Node> integrationPoints = {
-      {-0.57735, -0.57735, -0.57735}, // Точка 0
-      {-0.57735, -0.57735, 0.57735},  // Точка 1
-      {-0.57735, 0.57735, -0.57735},  // Точка 2
-      {-0.57735, 0.57735, 0.57735},   // Точка 3
-      {0.57735, -0.57735, -0.57735},  // Точка 4
-      {0.57735, -0.57735, 0.57735},   // Точка 5
-      {0.57735, 0.57735, -0.57735},   // Точка 6
-      {0.57735, 0.57735, 0.57735},    // Точка 7
+      {-0.57735026918962573, -0.57735026918962573,
+       -0.57735026918962573}, // Точка 0
+      {-0.57735026918962573, -0.57735026918962573,
+       0.57735026918962573}, // Точка 1
+      {-0.57735026918962573, 0.57735026918962573,
+       -0.57735026918962573}, // Точка 2
+      {-0.57735026918962573, 0.57735026918962573,
+       0.57735026918962573}, // Точка 3
+      {0.57735026918962573, -0.57735026918962573,
+       -0.57735026918962573}, // Точка 4
+      {0.57735026918962573, -0.57735026918962573,
+       0.57735026918962573}, // Точка 5
+      {0.57735026918962573, 0.57735026918962573,
+       -0.57735026918962573}, // Точка 6
+      {0.57735026918962573, 0.57735026918962573,
+       0.57735026918962573}, // Точка 7
   };
+};
 
-  // Функция формы
-  float shapeFunction(float localCoord, float xi) {
-    // Линейная функция формы
-    return 0.5 * (1.0 + xi * localCoord);
-  }
+// Функция формы
+double shapeFunction(double localCoord, double xi) {
+  // Линейная функция формы
+  return 0.5 * (1.0 + xi * localCoord);
+}
 
-  float calculateValue(float localX, float localY, float localZ,
-                       const std::vector<float> &nodalValues,
-                       const Element &element) {
+double calculateValue(double localX, double localY, double localZ,
+                      const std::vector<double> &nodalValues,
+                      const Element &element) {
 
-    // Вычисляем значения функций формы
-    float N1 = shapeFunction(localX, -1.0) * shapeFunction(localY, -1.0) *
-               shapeFunction(localZ, -1.0);
-    float N2 = shapeFunction(localX, 1.0) * shapeFunction(localY, -1.0) *
-               shapeFunction(localZ, -1.0);
-    float N3 = shapeFunction(localX, 1.0) * shapeFunction(localY, 1.0) *
-               shapeFunction(localZ, -1.0);
-    float N4 = shapeFunction(localX, -1.0) * shapeFunction(localY, 1.0) *
-               shapeFunction(localZ, -1.0);
-    float N5 = shapeFunction(localX, -1.0) * shapeFunction(localY, -1.0) *
-               shapeFunction(localZ, 1.0);
-    float N6 = shapeFunction(localX, 1.0) * shapeFunction(localY, -1.0) *
-               shapeFunction(localZ, 1.0);
-    float N7 = shapeFunction(localX, 1.0) * shapeFunction(localY, 1.0) *
-               shapeFunction(localZ, 1.0);
-    float N8 = shapeFunction(localX, -1.0) * shapeFunction(localY, 1.0) *
-               shapeFunction(localZ, 1.0);
+  // Вычисляем значения функций формы
+  float N1 = shapeFunction(localX, -1.0) * shapeFunction(localY, -1.0) *
+             shapeFunction(localZ, -1.0);
+  float N2 = shapeFunction(localX, 1.0) * shapeFunction(localY, -1.0) *
+             shapeFunction(localZ, -1.0);
+  float N3 = shapeFunction(localX, 1.0) * shapeFunction(localY, 1.0) *
+             shapeFunction(localZ, -1.0);
+  float N4 = shapeFunction(localX, -1.0) * shapeFunction(localY, 1.0) *
+             shapeFunction(localZ, -1.0);
+  float N5 = shapeFunction(localX, -1.0) * shapeFunction(localY, -1.0) *
+             shapeFunction(localZ, 1.0);
+  float N6 = shapeFunction(localX, 1.0) * shapeFunction(localY, -1.0) *
+             shapeFunction(localZ, 1.0);
+  float N7 = shapeFunction(localX, 1.0) * shapeFunction(localY, 1.0) *
+             shapeFunction(localZ, 1.0);
+  float N8 = shapeFunction(localX, -1.0) * shapeFunction(localY, 1.0) *
+             shapeFunction(localZ, 1.0);
 
-    // Вычисляем значение в точке
-    float value =
-        N1 * nodalValues[0] + // Индекс 0 соответствует node1 в Element
-        N2 * nodalValues[1] + // Индекс 1 соответствует node2 в Element
-        N3 * nodalValues[2] + // Индекс 2 соответствует node3 в Element
-        N4 * nodalValues[3] + // Индекс 3 соответствует node4 в Element
-        N5 * nodalValues[4] + // Индекс 4 соответствует node5 в Element
-        N6 * nodalValues[5] + // Индекс 5 соответствует node6 в Element
-        N7 * nodalValues[6] + // Индекс 6 соответствует node7 в Element
-        N8 * nodalValues[7]; // Индекс 7 соответствует node8 в Element
+  // Вычисляем значение в точке
+  float value = N1 * nodalValues[0] + // Индекс 0 соответствует node1 в Element
+                N2 * nodalValues[1] + // Индекс 1 соответствует node2 в Element
+                N3 * nodalValues[2] + // Индекс 2 соответствует node3 в Element
+                N4 * nodalValues[3] + // Индекс 3 соответствует node4 в Element
+                N5 * nodalValues[4] + // Индекс 4 соответствует node5 в Element
+                N6 * nodalValues[5] + // Индекс 5 соответствует node6 в Element
+                N7 * nodalValues[6] + // Индекс 6 соответствует node7 в Element
+                N8 * nodalValues[7]; // Индекс 7 соответствует node8 в Element
 
-    return value;
-  }
+  return value;
 };
 
 // Функция для расчета расстояния между двумя точками
@@ -126,6 +133,7 @@ struct IntegrationPointData {
   int elementNumber;
   int gaussPointNumber;
   double localCoords[3]; // Массив для хранения локальных координат
+  double globalCoords[3]; // Массив для хранения локальных координат
   double stress[6]; // Массив для хранения напряжений
 };
 
@@ -133,6 +141,7 @@ struct GaussPointData {
   int elementNumber;
   int gaussPointNumber;
   double localCoords[3]; // Массив для хранения локальных координат
+  double globalCoords[3]; // Массив для хранения локальных координат
   double stress[6]; // Массив для хранения напряжений
   double strain[6]; // Массив для хранения деформаций
 };
@@ -180,8 +189,12 @@ calculateDiscrepancy(const std::vector<IntegrationPointData> &interpolatedData,
 
     // Вычисление невязки для каждого компонента напряжения
     for (int j = 0; j < 6; ++j) {
-      elementDiscrepancy.push_back(
-          std::abs(interpPoint.stress[j] - filePoint.stress[j]));
+
+      double k = 100 * std::abs(interpPoint.stress[j] - filePoint.stress[j]) /
+                 std::max(std::abs(interpPoint.stress[j]),
+                          std::abs(filePoint.stress[j]));
+
+      elementDiscrepancy.push_back(k);
     }
   }
 
@@ -194,7 +207,7 @@ int main() {
 
   std::vector<Node> crd;
   {
-    std::ifstream in("crd.sba", std::ifstream::binary);
+    std::ifstream in("C:/git/MyProg/plate/crd.sba", std::ifstream::binary);
     if (!in.good())
       throw std::runtime_error("Crd");
     int numNodes, kort;
@@ -221,7 +234,7 @@ int main() {
 
   // ind
   {
-    std::ifstream in("ind.sba", std::ifstream::binary);
+    std::ifstream in("C:/git/MyProg/plate/ind.sba", std::ifstream::binary);
     if (!in.good())
       throw std::runtime_error("Ind");
     int numTypes;
@@ -251,7 +264,7 @@ int main() {
   SolutionData solutionData; // Создаем объект SolutionData
 
   {
-    std::ifstream in("solution0001.sba",
+    std::ifstream in("C:/git/MyProg/plate/solution0001.sba",
                      std::ifstream::binary);
 
     if (!in.good()) {
@@ -261,15 +274,14 @@ int main() {
 
     // Читаем флаги
     std::vector<int> flags(20);
-    in.read(reinterpret_cast<char *>(flags.data()), sizeof(int) * flags.size());
+    in.read((char *)(flags.data()), sizeof(int) * flags.size());
 
     // Читаем массивы (если они присутствуют)
     for (size_t i = 0; i < 20; ++i) {
       if (flags[i] == 1) {
         // Читаем массив
         std::vector<float> data(numNodes);
-        in.read(reinterpret_cast<char *>(data.data()),
-                sizeof(float) * numNodes);
+        in.read((char *)(data.data()), sizeof(float) * numNodes);
         // Заполняем соответствующий вектор в SolutionData
         switch (i) {
         case 0:
@@ -324,78 +336,66 @@ int main() {
                       nodeIndexes[3], nodeIndexes[4], nodeIndexes[5],
                       nodeIndexes[6], nodeIndexes[7]};
 
-      for (size_t i = 0; i < elem.integrationPoints.size(); ++i) {
-        // Получаем координаты точки интегрирования:
-        double localX = elem.integrationPoints[i].x;
-        double localY = elem.integrationPoints[i].y;
-        double localZ = elem.integrationPoints[i].z;
-
-        // Вычисляем координаты центра элемента:
-        double centerX = (crd[elem.node1 - 1].x + crd[elem.node2 - 1].x +
-                          crd[elem.node3 - 1].x + crd[elem.node4 - 1].x +
-                          crd[elem.node5 - 1].x + crd[elem.node6 - 1].x +
-                          crd[elem.node7 - 1].x + crd[elem.node8 - 1].x) /
-                         8.0;
-        double centerY = (crd[elem.node1 - 1].y + crd[elem.node2 - 1].y +
-                          crd[elem.node3 - 1].y + crd[elem.node4 - 1].y +
-                          crd[elem.node5 - 1].y + crd[elem.node6 - 1].y +
-                          crd[elem.node7 - 1].y + crd[elem.node8 - 1].y) /
-                         8.0;
-        double centerZ = (crd[elem.node1 - 1].z + crd[elem.node2 - 1].z +
-                          crd[elem.node3 - 1].z + crd[elem.node4 - 1].z +
-                          crd[elem.node5 - 1].z + crd[elem.node6 - 1].z +
-                          crd[elem.node7 - 1].z + crd[elem.node8 - 1].z) /
-                         8.0;
-
-        // Преобразуем координаты точки интегрирования в глобальные:
-        elem.integrationPoints[i].x =
-            centerX +
-            localX *
-                (0.01667 / 2.0); // 0.01667 - размер конечного элемента по оси X
-                                 // в задаче про пластину, /2.0 везде одинаково
-        elem.integrationPoints[i].y =
-            centerY +
-            localY *
-                (0.01667 / 2.0); // 0.01667 - размер конечного элемента по оси Y
-                                 // в задаче про пластину, /2.0 везде одинаково
-        elem.integrationPoints[i].z =
-            centerZ +
-            localZ *
-                (0.01 / 2.0); // 0.01 - размер конечного элемента по оси Z в
-                              // задаче про пластину, /2.0 везде одинаково
+      // Индекс ближайшей точки интегрирования
+      int locNumNode = -1; // Индекс числа, по умолчанию -1 (не найдено)
+      for (int i = 0; i < 8; ++i) {
+        if (nodeIndexes[i] == targetNode) {
+          locNumNode = i;
+          break; // Прерываем цикл, как только найдем число
+        }
+      }
+      int closestPointIndex;
+      switch (locNumNode) {
+      case 0:
+        closestPointIndex = 0;
+        break;
+      case 1:
+        closestPointIndex = 4;
+        break;
+      case 2:
+        closestPointIndex = 6;
+        break;
+      case 3:
+        closestPointIndex = 2;
+        break;
+      case 4:
+        closestPointIndex = 1;
+        break;
+      case 5:
+        closestPointIndex = 5;
+        break;
+      case 6:
+        closestPointIndex = 7;
+        break;
+      case 7:
+        closestPointIndex = 3;
+        break;
       }
 
-      int closestPointIndex =
-          findClosestIntegrationPoint(crd[targetNode - 1], elem);
-
       // Получаем координаты точки интегрирования:
-      double globalX = elem.integrationPoints[closestPointIndex].x;
-      double globalY = elem.integrationPoints[closestPointIndex].y;
-      double globalZ = elem.integrationPoints[closestPointIndex].z;
+      double localX = elem.integrationPoints[closestPointIndex].x;
+      double localY = elem.integrationPoints[closestPointIndex].y;
+      double localZ = elem.integrationPoints[closestPointIndex].z;
 
-      // Вычисляем координаты центра элемента:
-      double centerX = (crd[elem.node1 - 1].x + crd[elem.node2 - 1].x +
-                        crd[elem.node3 - 1].x + crd[elem.node4 - 1].x +
-                        crd[elem.node5 - 1].x + crd[elem.node6 - 1].x +
-                        crd[elem.node7 - 1].x + crd[elem.node8 - 1].x) /
-                       8.0;
-      double centerY = (crd[elem.node1 - 1].y + crd[elem.node2 - 1].y +
-                        crd[elem.node3 - 1].y + crd[elem.node4 - 1].y +
-                        crd[elem.node5 - 1].y + crd[elem.node6 - 1].y +
-                        crd[elem.node7 - 1].y + crd[elem.node8 - 1].y) /
-                       8.0;
-      double centerZ = (crd[elem.node1 - 1].z + crd[elem.node2 - 1].z +
-                        crd[elem.node3 - 1].z + crd[elem.node4 - 1].z +
-                        crd[elem.node5 - 1].z + crd[elem.node6 - 1].z +
-                        crd[elem.node7 - 1].z + crd[elem.node8 - 1].z) /
-                       8.0;
+      // Создаём вектора узловых значений координат
+      std::vector<double> coordsNodeX;
+      std::vector<double> coordsNodeY;
+      std::vector<double> coordsNodeZ;
 
-      // Преобразуем координаты в локальные
-      double localX =
-          (globalX - centerX) * (2.0 / 0.01667); // Масштабируем на 4.0
-      double localY =
-          (globalY - centerY) * (2.0 / 0.01667); // Масштабируем на 4.0
-      double localZ = (globalZ - centerZ) * (2.0 / 0.01); // Масштабируем на 4.0
+      for (int i = 0; i < 8; i++) {
+        int nodeIndex = nodeIndexes[i];
+        coordsNodeX.push_back(crd[nodeIndex - 1].x);
+        coordsNodeY.push_back(crd[nodeIndex - 1].y);
+        coordsNodeZ.push_back(crd[nodeIndex - 1].z);
+      }
+
+      // Глобальные координаты точки интегрирования
+      double globalX =
+          calculateValue(localX, localY, localZ, coordsNodeX, elem);
+      double globalY =
+          calculateValue(localX, localY, localZ, coordsNodeY, elem);
+      double globalZ =
+          calculateValue(localX, localY, localZ, coordsNodeZ, elem);
 
       // Создаем массив для хранения интерполированных значений
       double stress[6];
@@ -403,7 +403,7 @@ int main() {
       // Итерация по компонентам напряжения и интерполяция
       for (int i = 0; i < 6; ++i) {
         // Получаем значения в узлах элемента для текущего компонента
-        std::vector<float> nodalValues;
+        std::vector<double> nodalValues;
         for (int node : nodeIndexes) {
           // Используем правильный доступ к компонентам solutionData
           switch (i) {
@@ -429,10 +429,8 @@ int main() {
         }
 
         // Интерполяция значения в ближайшую точку интегрирования
-        stress[i] =
-            elem.calculateValue(localX, localY, localZ, nodalValues, elem);
+        stress[i] = calculateValue(localX, localY, localZ, nodalValues, elem);
       }
-
       // Добавляем данные в вектор integrationPointData
       IntegrationPointData data;
       data.elementNumber = elementIndex;
@@ -440,6 +438,9 @@ int main() {
       data.localCoords[0] = localX;
       data.localCoords[1] = localY;
       data.localCoords[2] = localZ;
+      data.globalCoords[0] = globalX;
+      data.globalCoords[1] = globalY;
+      data.globalCoords[2] = globalZ;
 
       // Копируем интерполированные значения в data.stress
       std::copy(std::begin(stress), std::end(stress), std::begin(data.stress));
@@ -447,7 +448,7 @@ int main() {
       integrationPointData.push_back(data);
     }
   }
-  // Сортировка по номеру элемента и по номеру точки Гаусса
+
   std::sort(integrationPointData.begin(), integrationPointData.end(),
             [](const IntegrationPointData &a, const IntegrationPointData &b) {
               // Сначала сортируем по номеру элемента
@@ -464,7 +465,7 @@ int main() {
 
   std::vector<GaussPointData> data;
 
-  std::ifstream file("int.dat", std::ifstream::binary);
+  std::ifstream file("C:/git/MyProg/plate/int.dat", std::ifstream::binary);
 
   if (!file.is_open()) {
     std::cerr << "Ошибка открытия файла int.dat\n";
@@ -477,11 +478,13 @@ int main() {
     file.read(reinterpret_cast<char *>(&point.gaussPointNumber),
               sizeof(double));
     // Считываем локальные координаты в массив
-    file.read(reinterpret_cast<char *>(point.localCoords), sizeof(double) * 3);
+    file.read((char *)(point.localCoords), sizeof(double) * 3);
+    // Считываем глобальные координаты в массив
+    file.read((char *)(point.globalCoords), sizeof(double) * 3);
     // Считываем напряжения в массив
-    file.read(reinterpret_cast<char *>(point.stress), sizeof(double) * 6);
+    file.read((char *)(point.stress), sizeof(double) * 6);
     // Считываем деформации в массив
-    file.read(reinterpret_cast<char *>(point.strain), sizeof(double) * 6);
+    file.read((char *)(point.strain), sizeof(double) * 6);
 
     // Увеличиваем номер КЭ на 1
     point.elementNumber++;
@@ -505,7 +508,7 @@ int main() {
     }
   }
 
-  std::cout << "\nМаксимальная невязка: " << maxDiscrepancy << std::endl;
+  std::cout << "\nМаксимальная невязка: " << maxDiscrepancy << "%" << std::endl;
 
   return 0;
 }
