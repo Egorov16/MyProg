@@ -10,6 +10,9 @@
 #include <string>
 #include <vector>
 
+#include <dlib/global_optimization.h>
+#include <dlib/optimization.h>
+
 // Структура для узла
 struct Node {
   double x;
@@ -76,7 +79,7 @@ struct GaussPointData {
   std::array<double, 6> stress; // Массив для хранения напряжений
   std::array<double, 6> strain; // Массив для хранения деформаций
 
-  double getValue(ValueType type) {
+  double getValue(ValueType type) const {
     switch (type) {
       // TODO Дописать остальное
     case ValueType::SXX:
@@ -97,6 +100,35 @@ struct Mesh {
   std::vector<std::vector<GaussPointData>> intData;
   // Карта принадлежности элементов узлам
   std::map<size_t, std::vector<size_t>> nodeElements;
+
+  // Получить полный вектор узловых значений
+  std::vector<double> getNodesData(ValueType type) const {
+    std::vector<double> data;
+    data.reserve(crd.size());
+
+    // TODO написать остальные
+    if (type == ValueType::SXX)
+      data.insert(data.end(), solutionData.SigmaXX.cbegin(),
+                  solutionData.SigmaXX.cend());
+    else {
+      throw std::runtime_error("Unimplemented");
+    }
+    return data;
+  }
+
+  // Получить локальный вектор узловых значений
+  std::vector<double> getLocalNodesData(size_t elemID, ValueType type) const {
+    std::vector<double> data;
+    const auto &inds = elems[elemID].inds;
+    data.reserve(inds.size());
+    auto globData = getNodesData(type);
+
+    for (auto id : inds) {
+      data.push_back(globData[id]);
+    }
+
+    return data;
+  }
 };
 
 // Чтение сетки и данных
@@ -322,15 +354,68 @@ calculateDiscrepancy(const std::vector<GaussPointData> &interpolatedData,
   return discrepancy;
 }
 
+typedef dlib::matrix<double, 0, 1> column_vector;
 // Функция пробует улучшить узловое значение в узле nodeID
 void tryToImproove(const Mesh &mesh, size_t nodeId, ValueType type) {
   // Найти все узлы, соседние с целевым
+  indexes indsToVariate;
 
   // Найти все точки интегрирования, ближайшие к целевому узлу
+  auto gpIDs = findNearestGPs(mesh, nodeId);
+  // Первый подход - добавить в список вариации все узлы всех сосудних элементов
+  for (const auto &d : gpIDs) {
+    auto elID = d.first;
+    const auto &ids = mesh.elems[elID].inds;
+    indsToVariate.insert(indsToVariate.end(), ids.cbegin(), ids.cend());
+  }
+  auto pos = std::unique(indsToVariate.begin(), indsToVariate.end());
+  indsToVariate.erase(pos, indsToVariate.end());
 
   // Создать функцию невязки
 
+  auto func = [&](const column_vector &deltas) {
+    // Вычислить среднеквадратическое отклонение
+    // Копия узлового вектора
+    auto nodesData = mesh.getNodesData(type);
+    for (size_t ct = 0, size = indsToVariate.size(); ct < size; ++ct) {
+      nodesData[indsToVariate[ct]] += deltas(ct);
+    }
+
+    double err = 0;
+
+    for (auto &data : gpIDs) {
+      auto elID = data.first;
+      for (auto pID : data.second) {
+        const auto &ids = mesh.elems[elID].inds;
+        std::vector<double> localData;
+        localData.reserve(ids.size());
+        for (auto id : ids) {
+          localData.push_back(nodesData[id]);
+        }
+        auto val = calculateValue(mesh.intData[elID][pID].localCoords,
+                                  localData, mesh.elems[elID]);
+        err += std::pow(val - mesh.intData[elID][pID].getValue(type), 2);
+      }
+    }
+
+    return err;
+  };
+
   // Варьирование
+
+  // Приращения к узловым значениям
+  column_vector deltas;
+  deltas.set_size(indsToVariate.size());
+  for (auto &d : deltas)
+    d = 0;
+
+  find_min_using_approximate_derivatives(
+      dlib::bfgs_search_strategy(), dlib::objective_delta_stop_strategy(1e-7),
+      func, deltas, -1);
+  for (size_t ct = 0; ct < indsToVariate.size(); ++ct) {
+    std::cout << indsToVariate[ct] << "\t" << deltas(ct) << std::endl;
+  }
+  assert(false);
 }
 
 int main(int numArgs, char **args) {
@@ -372,6 +457,11 @@ int main(int numArgs, char **args) {
     }
   }
   std::cout << "SXX:\t" << maxErr << "\t" << maxRelErr << std::endl;
+
+  // Цикл по каждому узлу и минимизация ошибки
+  for (size_t nodeID = 0; nodeID < numNodes; ++nodeID) {
+    tryToImproove(mesh, nodeID, ValueType::SXX);
+  }
 
   //   Вектор для хранения данных в точках интегрирования
   //  std::vector<IntegrationPointData> integrationPointData;
