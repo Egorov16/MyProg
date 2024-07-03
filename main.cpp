@@ -51,25 +51,38 @@ struct SolutionData {
   std::vector<float> SigmaXY;
   std::vector<float> SigmaYZ;
   std::vector<float> SigmaZX;
+  std::vector<float> SigmaI;
+  std::vector<float> Sigma1;
+  std::vector<float> Sigma2;
+  std::vector<float> Sigma3;
   std::vector<float> DefXX;
   std::vector<float> DefYY;
   std::vector<float> DefZZ;
   std::vector<float> DefXY;
   std::vector<float> DefYZ;
   std::vector<float> DefZX;
+  std::vector<float> DefI;
+  std::vector<float> DefPlast;
+  std::vector<float> None;
 };
 
-// Зачем две похожие структуры?
-//// Структура для хранения данных в точках интегрирования
-// struct IntegrationPointData {
-//   int elementNumber;
-//   int gaussPointNumber;
-//   double localCoords[3]; // Массив для хранения локальных координат
-//   double globalCoords[3]; // Массив для хранения локальных координат
-//   double stress[6]; // Массив для хранения напряжений
-// };
-
-enum class ValueType { CrdX, CrdY, CrdZ, SXX, SYY, SZZ, SXY, SYZ, SZX };
+enum class ValueType {
+  CrdX,
+  CrdY,
+  CrdZ,
+  SXX,
+  SYY,
+  SZZ,
+  SXY,
+  SYZ,
+  SZX,
+  EXX,
+  EYY,
+  EZZ,
+  EXY,
+  EYZ,
+  EZX,
+};
 
 struct GaussPointData {
   size_t elementNumber;
@@ -84,6 +97,39 @@ struct GaussPointData {
       // TODO Дописать остальное
     case ValueType::SXX:
       return stress[0];
+      break;
+    case ValueType::SYY:
+      return stress[1];
+      break;
+    case ValueType::SZZ:
+      return stress[2];
+      break;
+    case ValueType::SXY:
+      return stress[3];
+      break;
+    case ValueType::SYZ:
+      return stress[4];
+      break;
+    case ValueType::SZX:
+      return stress[5];
+      break;
+    case ValueType::EXX:
+      return strain[0];
+      break;
+    case ValueType::EYY:
+      return strain[1];
+      break;
+    case ValueType::EZZ:
+      return strain[2];
+      break;
+    case ValueType::EXY:
+      return strain[3];
+      break;
+    case ValueType::EYZ:
+      return strain[4];
+      break;
+    case ValueType::EZX:
+      return strain[5];
       break;
     default:
       return std::numeric_limits<double>::quiet_NaN();
@@ -110,9 +156,44 @@ struct Mesh {
     if (type == ValueType::SXX)
       data.insert(data.end(), solutionData.SigmaXX.cbegin(),
                   solutionData.SigmaXX.cend());
+    else if (type == ValueType::SYY)
+      data.insert(data.end(), solutionData.SigmaYY.cbegin(),
+                  solutionData.SigmaYY.cend());
+    else if (type == ValueType::SZZ)
+      data.insert(data.end(), solutionData.SigmaZZ.cbegin(),
+                  solutionData.SigmaZZ.cend());
+    else if (type == ValueType::SXY)
+      data.insert(data.end(), solutionData.SigmaXY.cbegin(),
+                  solutionData.SigmaXY.cend());
+    else if (type == ValueType::SYZ)
+      data.insert(data.end(), solutionData.SigmaYZ.cbegin(),
+                  solutionData.SigmaYZ.cend());
+    else if (type == ValueType::SZX)
+      data.insert(data.end(), solutionData.SigmaZX.cbegin(),
+                  solutionData.SigmaZX.cend());
+    else if (type == ValueType::EXX)
+      data.insert(data.end(), solutionData.DefXX.cbegin(),
+                  solutionData.DefXX.cend());
+    else if (type == ValueType::EYY)
+      data.insert(data.end(), solutionData.DefYY.cbegin(),
+                  solutionData.DefYY.cend());
+    else if (type == ValueType::EZZ)
+      data.insert(data.end(), solutionData.DefZZ.cbegin(),
+                  solutionData.DefZZ.cend());
+    else if (type == ValueType::EXY)
+      data.insert(data.end(), solutionData.DefXY.cbegin(),
+                  solutionData.DefXY.cend());
+    else if (type == ValueType::EYZ)
+      data.insert(data.end(), solutionData.DefYZ.cbegin(),
+                  solutionData.DefYZ.cend());
+    else if (type == ValueType::EZX)
+      data.insert(data.end(), solutionData.DefZX.cbegin(),
+                  solutionData.DefZX.cend());
+
     else {
       throw std::runtime_error("Unimplemented");
     }
+
     return data;
   }
 
@@ -135,12 +216,6 @@ struct Mesh {
 Mesh readMesh(const std::string &prefix);
 // Проверка интерполяций
 void checkData(const Mesh &mesh);
-
-// Функция формы
-// double shapeFunction(double localCoord, double xi) {
-//  // Линейная функция формы
-//  return 0.5 * (1.0 + xi * localCoord);
-//}
 
 // Получить локальный индекс точки интегрирования, ближайшей к узлу с глобальным
 // номером nodeID
@@ -233,30 +308,6 @@ double calculateValue(Node localCrd, const std::vector<double> &nodalValues,
   return value;
 };
 
-// Функция для расчета расстояния между двумя точками
-double distance(const Node &point1, const Node &point2) {
-  return std::sqrt(std::pow(point1.x - point2.x, 2) +
-                   std::pow(point1.y - point2.y, 2) +
-                   std::pow(point1.z - point2.z, 2));
-}
-
-//// Функция для поиска ближайшей точки интегрирования
-// int findClosestIntegrationPoint(const Node &targetNode,
-//                                 const Element &element) {
-//   double minDistance = std::numeric_limits<double>::max();
-//   int closestPointIndex = 0;
-
-//  for (size_t i = 0; i < element.integrationPoints.size(); ++i) {
-//    double currentDistance = distance(targetNode,
-//    element.integrationPoints[i]); if (currentDistance < minDistance) {
-//      minDistance = currentDistance;
-//      closestPointIndex = i;
-//    }
-//  }
-
-//  return closestPointIndex;
-//}
-
 // Собрать вектор узловых значений
 std::vector<double> constructNodalData(const Mesh &mesh, size_t elemID,
                                        ValueType vType) {
@@ -274,7 +325,30 @@ std::vector<double> constructNodalData(const Mesh &mesh, size_t elemID,
       data[ct] = mesh.crd[ids[ct]].z;
     else if (vType == ValueType::SXX)
       data[ct] = mesh.solutionData.SigmaXX[ids[ct]];
-    else // TODO дописать остальные поля
+    else if (vType == ValueType::SYY)
+      data[ct] = mesh.solutionData.SigmaYY[ids[ct]];
+    else if (vType == ValueType::SZZ)
+      data[ct] = mesh.solutionData.SigmaZZ[ids[ct]];
+    else if (vType == ValueType::SXY)
+      data[ct] = mesh.solutionData.SigmaXY[ids[ct]];
+    else if (vType == ValueType::SYZ)
+      data[ct] = mesh.solutionData.SigmaYZ[ids[ct]];
+    else if (vType == ValueType::SZX)
+      data[ct] = mesh.solutionData.SigmaZX[ids[ct]];
+    else if (vType == ValueType::EXX)
+      data[ct] = mesh.solutionData.DefXX[ids[ct]];
+    else if (vType == ValueType::EYY)
+      data[ct] = mesh.solutionData.DefYY[ids[ct]];
+    else if (vType == ValueType::EZZ)
+      data[ct] = mesh.solutionData.DefZZ[ids[ct]];
+    else if (vType == ValueType::EXY)
+      data[ct] = mesh.solutionData.DefXY[ids[ct]];
+    else if (vType == ValueType::EYZ)
+      data[ct] = mesh.solutionData.DefYZ[ids[ct]];
+    else if (vType == ValueType::EZX)
+      data[ct] = mesh.solutionData.DefZX[ids[ct]];
+
+    else
       assert(false);
   }
   return data;
@@ -299,64 +373,9 @@ std::pair<double, double> calculateError(const Mesh &mesh, size_t elemId,
   return {err, relErr};
 }
 
-// Функция для вычисления невязки
-std::vector<std::vector<double>>
-calculateDiscrepancy(const std::vector<GaussPointData> &interpolatedData,
-                     const std::vector<GaussPointData> &fileData) {
-
-  // Внешний вектор для хранения невязок по элементам
-  // Внутренний вектор для хранения невязок по компонентам напряжения в элементе
-  std::vector<std::vector<double>> discrepancy;
-
-  // Проверка, что вектора одинаковой длины
-  if (interpolatedData.size() != fileData.size()) {
-    std::cerr << "Вектора данных имеют разную длину!\n";
-    return discrepancy; // Возвращаем пустой вектор в случае ошибки
-  }
-
-  // Итерация по данным и вычисление невязки
-  int currentElement = -1;
-  // Текущий номер элемента
-  std::vector<double> elementDiscrepancy;
-  // Вектор для хранения невязок для текущего элемента
-
-  for (size_t i = 0; i < interpolatedData.size(); ++i) {
-    const auto &interpPoint = interpolatedData[i];
-    const auto &filePoint = fileData[i];
-
-    // Проверка на совпадение номеров элемента и точки Гаусса
-    if (interpPoint.elementNumber != filePoint.elementNumber ||
-        interpPoint.gaussPointNumber != filePoint.gaussPointNumber) {
-      std::cerr << "Несовпадение номеров элемента или точки Гаусса!\n";
-      continue; // Переходим к следующей точке
-    }
-
-    // Если это новый элемент, добавляем предыдущий в общий вектор
-    if (currentElement != interpPoint.elementNumber) {
-      if (!elementDiscrepancy.empty()) {
-        discrepancy.push_back(elementDiscrepancy);
-      }
-      elementDiscrepancy.clear(); // Очищаем вектор невязок для нового элемента
-      currentElement = interpPoint.elementNumber;
-    }
-
-    // Вычисление невязки для каждого компонента напряжения
-    for (int j = 0; j < 6; ++j) {
-
-      double k = 100 * std::abs(interpPoint.stress[j] - filePoint.stress[j]) /
-                 std::max(std::abs(interpPoint.stress[j]),
-                          std::abs(filePoint.stress[j]));
-
-      elementDiscrepancy.push_back(k);
-    }
-  }
-
-  return discrepancy;
-}
-
 typedef dlib::matrix<double, 0, 1> column_vector;
 // Функция пробует улучшить узловое значение в узле nodeID
-void tryToImproove(const Mesh &mesh, size_t nodeId, ValueType type) {
+double tryToImproove(const Mesh &mesh, size_t nodeId, ValueType type) {
   // Найти все узлы, соседние с целевым
   indexes indsToVariate;
 
@@ -409,14 +428,23 @@ void tryToImproove(const Mesh &mesh, size_t nodeId, ValueType type) {
   for (auto &d : deltas)
     d = 0;
 
+  std::cout << func(deltas) << std::endl;
   find_min_using_approximate_derivatives(
       dlib::bfgs_search_strategy(), dlib::objective_delta_stop_strategy(1e-7),
       func, deltas, -1);
   for (size_t ct = 0; ct < indsToVariate.size(); ++ct) {
     std::cout << indsToVariate[ct] << "\t" << deltas(ct) << std::endl;
   }
-  assert(false);
+  std::cout << func(deltas) << std::endl;
+
+  auto pas = std::find(indsToVariate.cbegin(), indsToVariate.cend(), nodeId);
+
+  assert(pas != indsToVariate.cend());
+
+  return deltas(pas - indsToVariate.cbegin());
 }
+
+std::vector<int> flags(20);
 
 int main(int numArgs, char **args) {
   // Не понимаю зачем это
@@ -433,7 +461,7 @@ int main(int numArgs, char **args) {
   if (numArgs > 2)
     throw std::runtime_error("Wrong number of params. Should be 0 or 1 (path)");
 
-  const auto mesh = readMesh(workDir);
+  auto mesh = readMesh(workDir);
   auto &crd = mesh.crd;
   auto elems = mesh.elems;
   auto &solutionData = mesh.solutionData;
@@ -441,183 +469,141 @@ int main(int numArgs, char **args) {
 
   checkData(mesh);
 
-  // Проверяем напряжения SXX
-  double maxErr = 0, maxRelErr = 0;
-  for (size_t elemCt = 0, size = mesh.elems.size(); elemCt < size; ++elemCt) {
-    auto data = constructNodalData(mesh, elemCt, ValueType::SXX);
-    for (auto &gPoint : mesh.intData[elemCt]) {
-      auto val = calculateValue(gPoint.localCoords, data, mesh.elems[elemCt]);
-      auto target = gPoint.stress[0];
-      auto err = target - val;
-      auto relErr = err / target;
-      if (std::fabs(err) > std::fabs(maxErr))
-        maxErr = err;
-      if (std::fabs(relErr) > std::fabs(maxRelErr))
-        maxRelErr = relErr;
-    }
-  }
-  std::cout << "SXX:\t" << maxErr << "\t" << maxRelErr << std::endl;
+  //Понимаю, что алгоритм ниже неэффективен для plate и будет долго компилироваться
+  //Но ничего другого пока не придумал, поэтому выкладываю что есть
 
   // Цикл по каждому узлу и минимизация ошибки
   for (size_t nodeID = 0; nodeID < numNodes; ++nodeID) {
-    tryToImproove(mesh, nodeID, ValueType::SXX);
+    // Вычисляем  приращения  для  текущего  узла
+    float deltaSXX = tryToImproove(mesh, nodeID, ValueType::SXX);
+    float deltaSYY = tryToImproove(mesh, nodeID, ValueType::SYY);
+    float deltaSZZ = tryToImproove(mesh, nodeID, ValueType::SZZ);
+    float deltaSXY = tryToImproove(mesh, nodeID, ValueType::SXY);
+    float deltaSYZ = tryToImproove(mesh, nodeID, ValueType::SYZ);
+    float deltaSZX = tryToImproove(mesh, nodeID, ValueType::SZX);
+    float deltaEXX = tryToImproove(mesh, nodeID, ValueType::EXX);
+    float deltaEYY = tryToImproove(mesh, nodeID, ValueType::EYY);
+    float deltaEZZ = tryToImproove(mesh, nodeID, ValueType::EZZ);
+    float deltaEXY = tryToImproove(mesh, nodeID, ValueType::EXY);
+    float deltaEYZ = tryToImproove(mesh, nodeID, ValueType::EYZ);
+    float deltaEZX = tryToImproove(mesh, nodeID, ValueType::EZX);
+
+    // Обновляем  значения  напрямую
+    solutionData.SigmaXX[nodeID] += deltaSXX; 
+    solutionData.SigmaYY[nodeID] += deltaSYY;
+    solutionData.SigmaZZ[nodeID] += deltaSZZ;
+    solutionData.SigmaXY[nodeID] += deltaSXY;
+    solutionData.SigmaYZ[nodeID] += deltaSYZ;
+    solutionData.SigmaZX[nodeID] += deltaSZX;
+    solutionData.DefXX[nodeID] += deltaEXX;
+    solutionData.DefYY[nodeID] += deltaEYY;
+    solutionData.DefZZ[nodeID] += deltaEZZ;
+    solutionData.DefXY[nodeID] += deltaEXY;
+    solutionData.DefYZ[nodeID] += deltaEYZ;
+    solutionData.DefZX[nodeID] += deltaEZX;
   }
 
-  //   Вектор для хранения данных в точках интегрирования
-  //  std::vector<IntegrationPointData> integrationPointData;
+  // Записываем обновленные данные в новый файл
+  std::ofstream out(workDir + "solution0002.sba", std::ofstream::binary);
+  if (!out.good()) {
+    std::cerr << "Ошибка открытия файла solution0002.sba.sba\n";
+    return 1;
+  }
 
-  //  for (int targetNode = 1; targetNode <= crd.size(); ++targetNode) {
+  // Записываем флаги
+  out.write(reinterpret_cast<const char *>(flags.data()),
+            sizeof(int) * flags.size());
 
-  //    for (int elementIndex : nodeElements[targetNode]) {
+  // Записываем массивы (если они присутствуют)
+  for (size_t i = 0; i < 20; ++i) {
+    if (flags[i] == 1) {
+      switch (i) {
+      case 0:
+        out.write(
+            reinterpret_cast<const char *>(solutionData.Temperature.data()),
+            sizeof(float) * numNodes);
+        break;
+      case 1:
+        out.write(reinterpret_cast<const char *>(solutionData.SigmaXX.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 2:
+        out.write(reinterpret_cast<const char *>(solutionData.SigmaYY.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 3:
+        out.write(reinterpret_cast<const char *>(solutionData.SigmaZZ.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 4:
+        out.write(reinterpret_cast<const char *>(solutionData.SigmaXY.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 5:
+        out.write(reinterpret_cast<const char *>(solutionData.SigmaYZ.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 6:
+        out.write(reinterpret_cast<const char *>(solutionData.SigmaZX.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 7:
+        out.write(reinterpret_cast<const char *>(solutionData.SigmaI.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 8:
+        out.write(reinterpret_cast<const char *>(solutionData.Sigma1.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 9:
+        out.write(reinterpret_cast<const char *>(solutionData.Sigma2.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 10:
+        out.write(reinterpret_cast<const char *>(solutionData.Sigma3.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 11:
+        out.write(reinterpret_cast<const char *>(solutionData.DefXX.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 12:
+        out.write(reinterpret_cast<const char *>(solutionData.DefYY.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 13:
+        out.write(reinterpret_cast<const char *>(solutionData.DefZZ.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 14:
+        out.write(reinterpret_cast<const char *>(solutionData.DefXY.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 15:
+        out.write(reinterpret_cast<const char *>(solutionData.DefYZ.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 16:
+        out.write(reinterpret_cast<const char *>(solutionData.DefZX.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 17:
+        out.write(reinterpret_cast<const char *>(solutionData.DefI.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 18:
+        out.write(reinterpret_cast<const char *>(solutionData.DefPlast.data()),
+                  sizeof(float) * numNodes);
+        break;
+      case 19:
+        out.write(reinterpret_cast<const char *>(solutionData.None.data()),
+                  sizeof(float) * numNodes);
+        break;
+      }
+    }
+  }
 
-  //      // Получаем номера узлов из elems:
-  //      auto nodeIndexes = elems[elementIndex - 1].second;
-
-  //      // Создаем объект Element:
-  //      Element elem = {Type::hexa8, nodeIndexes};
-
-  //      // Индекс ближайшей точки интегрирования
-  //      int locNumNode = -1; // Индекс числа, по умолчанию -1 (не найдено)
-  //      for (int i = 0; i < 8; ++i) {
-  //        if (nodeIndexes[i] == targetNode) {
-  //          locNumNode = i;
-  //          break; // Прерываем цикл, как только найдем число
-  //        }
-  //      }
-  //      int closestPointIndex;
-  //      switch (locNumNode) {
-  //      case 0:
-  //        closestPointIndex = 0;
-  //        break;
-  //      case 1:
-  //        closestPointIndex = 4;
-  //        break;
-  //      case 2:
-  //        closestPointIndex = 6;
-  //        break;
-  //      case 3:
-  //        closestPointIndex = 2;
-  //        break;
-  //      case 4:
-  //        closestPointIndex = 1;
-  //        break;
-  //      case 5:
-  //        closestPointIndex = 5;
-  //        break;
-  //      case 6:
-  //        closestPointIndex = 7;
-  //        break;
-  //      case 7:
-  //        closestPointIndex = 3;
-  //        break;
-  //      }
-
-  //      // Получаем координаты точки интегрирования:
-  //      double localX = elem.integrationPoints[closestPointIndex].x;
-  //      double localY = elem.integrationPoints[closestPointIndex].y;
-  //      double localZ = elem.integrationPoints[closestPointIndex].z;
-
-  //      // Создаём вектора узловых значений координат
-  //      std::vector<double> coordsNodeX;
-  //      std::vector<double> coordsNodeY;
-  //      std::vector<double> coordsNodeZ;
-
-  //      for (int i = 0; i < 8; i++) {
-  //        int nodeIndex = nodeIndexes[i];
-  //        coordsNodeX.push_back(crd[nodeIndex - 1].x);
-  //        coordsNodeY.push_back(crd[nodeIndex - 1].y);
-  //        coordsNodeZ.push_back(crd[nodeIndex - 1].z);
-  //      }
-
-  //      // Глобальные координаты точки интегрирования
-  //      double globalX =
-  //          calculateValue(localX, localY, localZ, coordsNodeX, elem);
-  //      double globalY =
-  //          calculateValue(localX, localY, localZ, coordsNodeY, elem);
-  //      double globalZ =
-  //          calculateValue(localX, localY, localZ, coordsNodeZ, elem);
-
-  //      // Создаем массив для хранения интерполированных значений
-  //      double stress[6];
-
-  //      // Итерация по компонентам напряжения и интерполяция
-  //      for (int i = 0; i < 6; ++i) {
-  //        // Получаем значения в узлах элемента для текущего компонента
-  //        std::vector<double> nodalValues;
-  //        for (int node : nodeIndexes) {
-  //          // Используем правильный доступ к компонентам solutionData
-  //          switch (i) {
-  //          case 0:
-  //            nodalValues.push_back(solutionData.SigmaXX[node - 1]);
-  //            break;
-  //          case 1:
-  //            nodalValues.push_back(solutionData.SigmaYY[node - 1]);
-  //            break;
-  //          case 2:
-  //            nodalValues.push_back(solutionData.SigmaZZ[node - 1]);
-  //            break;
-  //          case 3:
-  //            nodalValues.push_back(solutionData.SigmaXY[node - 1]);
-  //            break;
-  //          case 4:
-  //            nodalValues.push_back(solutionData.SigmaYZ[node - 1]);
-  //            break;
-  //          case 5:
-  //            nodalValues.push_back(solutionData.SigmaZX[node - 1]);
-  //            break;
-  //          }
-  //        }
-
-  //        // Интерполяция значения в ближайшую точку интегрирования
-  //        stress[i] = calculateValue(localX, localY, localZ, nodalValues,
-  //        elem);
-  //      }
-  //      // Добавляем данные в вектор integrationPointData
-  //      IntegrationPointData data;
-  //      data.elementNumber = elementIndex;
-  //      data.gaussPointNumber = closestPointIndex;
-  //      data.localCoords[0] = localX;
-  //      data.localCoords[1] = localY;
-  //      data.localCoords[2] = localZ;
-  //      data.globalCoords[0] = globalX;
-  //      data.globalCoords[1] = globalY;
-  //      data.globalCoords[2] = globalZ;
-
-  //      // Копируем интерполированные значения в data.stress
-  //      std::copy(std::begin(stress), std::end(stress),
-  //      std::begin(data.stress));
-
-  //      integrationPointData.push_back(data);
-  //    }
-  //  }
-
-  //  std::sort(integrationPointData.begin(), integrationPointData.end(),
-  //            [](const IntegrationPointData &a, const IntegrationPointData &b)
-  //            {
-  //              // Сначала сортируем по номеру элемента
-  //              if (a.elementNumber != b.elementNumber) {
-  //                return a.elementNumber < b.elementNumber;
-  //              } else {
-  //                // Если элементы одинаковые, сортируем по номеру точки
-  //                // интегрирования
-  //                return a.gaussPointNumber < b.gaussPointNumber;
-  //              }
-  //            });
-
-  //  // Вычисление невязки
-  //  std::vector<std::vector<double>> discrepancy =
-  //      calculateDiscrepancy(integrationPointData, data);
-
-  //  // Поиск максимального значения невязки
-  //  double maxDiscrepancy = 0.0;
-  //  for (const auto &elementDiscrepancy : discrepancy) {
-  //    for (const auto &value : elementDiscrepancy) {
-  //      maxDiscrepancy = std::max(maxDiscrepancy, value);
-  //    }
-  //  }
-
-  //  std::cout << "\nМаксимальная невязка: " << maxDiscrepancy << "%" <<
-  //  std::endl;
+  out.close();
 
   return 0;
 }
@@ -665,7 +651,6 @@ Mesh readMesh(const std::string &prefix) {
 
     int indexElem = 0;
     for (auto t : types) {
-      // TODO добавить остальные типы
       Type type = Type::hexa8;
       size_t indLength;
       if (t.first == 0) {
@@ -706,7 +691,6 @@ Mesh readMesh(const std::string &prefix) {
       std::runtime_error("Ошибка открытия файла solution0001.sba");
 
     // Читаем флаги
-    std::vector<int> flags(20);
     in.read((char *)(flags.data()), sizeof(int) * flags.size());
 
     // Читаем массивы (если они присутствуют)
@@ -738,6 +722,46 @@ Mesh readMesh(const std::string &prefix) {
         case 6:
           solutionData.SigmaZX = data;
           break;
+        case 7:
+          solutionData.SigmaI = data;
+          break;
+        case 8:
+          solutionData.Sigma1 = data;
+          break;
+        case 9:
+          solutionData.Sigma2 = data;
+          break;
+        case 10:
+          solutionData.Sigma3 = data;
+          break;
+        case 11:
+          solutionData.DefXX = data;
+          break;
+        case 12:
+          solutionData.DefYY = data;
+          break;
+        case 13:
+          solutionData.DefZZ = data;
+          break;
+        case 14:
+          solutionData.DefXY = data;
+          break;
+        case 15:
+          solutionData.DefYZ = data;
+          break;
+        case 16:
+          solutionData.DefZX = data;
+          break;
+        case 17:
+          solutionData.DefI = data;
+          break;
+        case 18:
+          solutionData.DefPlast = data;
+          break;
+        case 19:
+          solutionData.None = data;
+          break;
+
         }
       }
     }
