@@ -1,4 +1,4 @@
-﻿﻿#include <algorithm>
+﻿#include <algorithm>
 #include <array>
 #include <assert.h>
 #include <fstream>
@@ -6,7 +6,6 @@
 #include <limits>
 #include <map>
 #include <math.h>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -374,8 +373,11 @@ std::pair<double, double> calculateError(const Mesh &mesh, size_t elemId,
 }
 
 typedef dlib::matrix<double, 0, 1> column_vector;
+
 // Функция пробует улучшить узловое значение в узле nodeID
-double tryToImproove(const Mesh &mesh, size_t nodeId, ValueType type) {
+double tryToImproove(const Mesh &mesh, size_t nodeId, ValueType type,
+                     double &N1, double &N2) {
+
   // Найти все узлы, соседние с целевым
   indexes indsToVariate;
 
@@ -428,20 +430,20 @@ double tryToImproove(const Mesh &mesh, size_t nodeId, ValueType type) {
   for (auto &d : deltas)
     d = 0;
 
-  std::cout << func(deltas) << std::endl;
+  N1 += func(deltas);
+
   find_min_using_approximate_derivatives(
       dlib::bfgs_search_strategy(), dlib::objective_delta_stop_strategy(1e-7),
       func, deltas, -1);
-  for (size_t ct = 0; ct < indsToVariate.size(); ++ct) {
-    std::cout << indsToVariate[ct] << "\t" << deltas(ct) << std::endl;
-  }
-  std::cout << func(deltas) << std::endl;
+
+  N2 += func(deltas);
 
   auto pas = std::find(indsToVariate.cbegin(), indsToVariate.cend(), nodeId);
 
   assert(pas != indsToVariate.cend());
 
   return deltas(pas - indsToVariate.cbegin());
+
 }
 
 std::vector<int> flags(20);
@@ -469,141 +471,347 @@ int main(int numArgs, char **args) {
 
   checkData(mesh);
 
-  // Понимаю, что алгоритм ниже неэффективен для plate и будет долго
-  // компилироваться
+  std::vector<float> deltaSXX;
+  std::vector<float> deltaSYY;
+  std::vector<float> deltaSZZ;
+  std::vector<float> deltaSXY;
+  std::vector<float> deltaSYZ;
+  std::vector<float> deltaSZX;
+  std::vector<float> deltaEXX;
+  std::vector<float> deltaEYY;
+  std::vector<float> deltaEZZ;
+  std::vector<float> deltaEXY;
+  std::vector<float> deltaEYZ;
+  std::vector<float> deltaEZX;
+
+  double MSXX = 0;
+  double MSXXo = 0;
+  double MSYY = 0;
+  double MSYYo = 0;
+  double MSZZ = 0;
+  double MSZZo = 0;
+  double MSXY = 0;
+  double MSXYo = 0;
+  double MSYZ = 0;
+  double MSYZo = 0;
+  double MSZX = 0;
+  double MSZXo = 0;
+  double MEXX = 0;
+  double MEXXo = 0;
+  double MEYY = 0;
+  double MEYYo = 0;
+  double MEZZ = 0;
+  double MEZZo = 0;
+  double MEXY = 0;
+  double MEXYo = 0;
+  double MEYZ = 0;
+  double MEYZo = 0;
+  double MEZX = 0;
+  double MEZXo = 0;
+
+  int k = 0;
 
   // Цикл по каждому узлу и минимизация ошибки
   for (size_t nodeID = 0; nodeID < numNodes; ++nodeID) {
-    // Вычисляем  приращения  для  текущего  узла
-    float deltaSXX = tryToImproove(mesh, nodeID, ValueType::SXX);
-    float deltaSYY = tryToImproove(mesh, nodeID, ValueType::SYY);
-    float deltaSZZ = tryToImproove(mesh, nodeID, ValueType::SZZ);
-    float deltaSXY = tryToImproove(mesh, nodeID, ValueType::SXY);
-    float deltaSYZ = tryToImproove(mesh, nodeID, ValueType::SYZ);
-    float deltaSZX = tryToImproove(mesh, nodeID, ValueType::SZX);
-    float deltaEXX = tryToImproove(mesh, nodeID, ValueType::EXX);
-    float deltaEYY = tryToImproove(mesh, nodeID, ValueType::EYY);
-    float deltaEZZ = tryToImproove(mesh, nodeID, ValueType::EZZ);
-    float deltaEXY = tryToImproove(mesh, nodeID, ValueType::EXY);
-    float deltaEYZ = tryToImproove(mesh, nodeID, ValueType::EYZ);
-    float deltaEZX = tryToImproove(mesh, nodeID, ValueType::EZX);
-
     // Обновляем  значения  напрямую
-    solutionData.SigmaXX[nodeID] += deltaSXX;
-    solutionData.SigmaYY[nodeID] += deltaSYY;
-    solutionData.SigmaZZ[nodeID] += deltaSZZ;
-    solutionData.SigmaXY[nodeID] += deltaSXY;
-    solutionData.SigmaYZ[nodeID] += deltaSYZ;
-    solutionData.SigmaZX[nodeID] += deltaSZX;
-    solutionData.DefXX[nodeID] += deltaEXX;
-    solutionData.DefYY[nodeID] += deltaEYY;
-    solutionData.DefZZ[nodeID] += deltaEZZ;
-    solutionData.DefXY[nodeID] += deltaEXY;
-    solutionData.DefYZ[nodeID] += deltaEYZ;
-    solutionData.DefZX[nodeID] += deltaEZX;
+    solutionData.SigmaXX[nodeID] += static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::SXX, MSXX, MSXXo));
+    solutionData.SigmaYY[nodeID] += static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::SYY, MSYY, MSYYo));
+    solutionData.SigmaZZ[nodeID] += static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::SZZ, MSZZ, MSZZo));
+    solutionData.SigmaXY[nodeID] += static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::SXY, MSXY, MSXYo));
+    solutionData.SigmaYZ[nodeID] += static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::SYZ, MSYZ, MSYZo));
+    solutionData.SigmaZX[nodeID] += static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::SZX, MSZX, MSZXo));
+    solutionData.DefXX[nodeID] += static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::EXX, MEXX, MEXXo));
+    solutionData.DefYY[nodeID] += static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::EYY, MEYY, MEYYo));
+    solutionData.DefZZ[nodeID] += static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::EZZ, MEZZ, MEZZo));
+    solutionData.DefXY[nodeID] += static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::EXY, MEXY, MEXYo));
+    solutionData.DefYZ[nodeID] += static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::EYZ, MEYZ, MEYZo));
+    solutionData.DefZX[nodeID] += static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::EZX, MEZX, MEZXo));
+
+    // Вычисляем  приращения  для  текущего  узла
+    deltaSXX.push_back(static_cast<float>(tryToImproove(
+        mesh, nodeID, ValueType::SXX, MSXX, MSXXo)));
+    deltaSYY.push_back(static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::SYY, MSYY, MSYYo)));
+    deltaSZZ.push_back(static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::SZZ, MSZZ, MSZZo)));
+    deltaSXY.push_back(static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::SXY, MSXY, MSXYo)));
+    deltaSYZ.push_back(static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::SYZ, MSYZ, MSYZo)));
+    deltaSZX.push_back(static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::SZX, MSZX, MSZXo)));
+    deltaEXX.push_back(static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::EXX, MEXX, MEXXo)));
+    deltaEYY.push_back(static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::EYY, MEYY, MEYYo)));
+    deltaEZZ.push_back(static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::EZZ, MEZZ, MEZZo)));
+    deltaEXY.push_back(static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::EXY, MEXY, MEXYo)));
+    deltaEYZ.push_back(static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::EYZ, MEYZ, MEYZo)));
+    deltaEZX.push_back(static_cast<float>(
+        tryToImproove(mesh, nodeID, ValueType::EZX, MEZX, MEZXo)));
   }
 
-  // Записываем обновленные данные в новый файл
-  std::ofstream out(workDir + "solution0002.sba", std::ofstream::binary);
-  if (!out.good()) {
-    std::cerr << "Ошибка открытия файла solution0002.sba.sba\n";
-    return 1;
+  std::cout << "Суммарная невязка по SXX до оптимизации =  " << std::sqrt(MSXX* (1./ numNodes))
+            << std::endl;
+  std::cout << "Суммарная невязка по SXX после оптимизации =  "
+            << std::sqrt(MSXXo * (1. / numNodes))
+            << std::endl;
+  std::cout << std::endl;
+  std::cout << "Суммарная невязка по SYY до оптимизации =  "
+            << std::sqrt(MSYY * (1. / numNodes))
+            << std::endl;
+  std::cout << "Суммарная невязка по SYY после оптимизации =  "
+            << std::sqrt(MSYYo * (1. / numNodes))
+            << std::endl;
+  std::cout << std::endl;
+  std::cout << "Суммарная невязка по SZZ до оптимизации =  "
+            << std::sqrt(MSZZ * (1. / numNodes))
+            << std::endl;
+  std::cout << "Суммарная невязка по SZZ после оптимизации =  "
+            << std::sqrt(MSZZo * (1. / numNodes))
+            << std::endl;
+  std::cout << std::endl;
+  std::cout << "Суммарная невязка по SXY до оптимизации =  "
+            << std::sqrt(MSXY * (1. / numNodes))
+            << std::endl;
+  std::cout << "Суммарная невязка по SXY после оптимизации =  "
+            << std::sqrt(MSXYo * (1. / numNodes))
+            << std::endl;
+  std::cout << std::endl;
+  std::cout << "Суммарная невязка по SYZ до оптимизации =  "
+            << std::sqrt(MSYZ * (1. / numNodes))
+            << std::endl;
+  std::cout << "Суммарная невязка по SYZ после оптимизации =  "
+            << std::sqrt(MSYZo * (1. / numNodes))
+            << std::endl;
+  std::cout << std::endl;
+  std::cout << "Суммарная невязка по SZX до оптимизации =  "
+            << std::sqrt(MSZX * (1. / numNodes))
+            << std::endl;
+  std::cout << "Суммарная невязка по SZX после оптимизации =  "
+            << std::sqrt(MSZXo * (1. / numNodes))
+            << std::endl;
+  std::cout << std::endl;
+  std::cout << "Суммарная невязка по EXX до оптимизации =  "
+            << std::sqrt(MEXX * (1. / numNodes))
+            << std::endl;
+  std::cout << "Суммарная невязка по EXX после оптимизации =  "
+            << std::sqrt(MEXXo * (1. / numNodes))
+            << std::endl;
+  std::cout << std::endl;
+  std::cout << "Суммарная невязка по EYY до оптимизации =  "
+            << std::sqrt(MEYY * (1. / numNodes))
+            << std::endl;
+  std::cout << "Суммарная невязка по EYY после оптимизации =  "
+            << std::sqrt(MEYYo * (1. / numNodes))
+            << std::endl;
+  std::cout << std::endl;
+  std::cout << "Суммарная невязка по EZZ до оптимизации =  "
+            << std::sqrt(MEZZ * (1. / numNodes))
+            << std::endl;
+  std::cout << "Суммарная невязка по EZZ после оптимизации =  "
+            << std::sqrt(MEZZo * (1. / numNodes))
+            << std::endl;
+  std::cout << std::endl;
+  std::cout << "Суммарная невязка по EXY до оптимизации =  "
+            << std::sqrt(MEXY * (1. / numNodes))
+            << std::endl;
+  std::cout << "Суммарная невязка по EXY после оптимизации =  "
+            << std::sqrt(MEXYo * (1. / numNodes))
+            << std::endl;
+  std::cout << std::endl;
+  std::cout << "Суммарная невязка по EYZ до оптимизации =  "
+            << std::sqrt(MEYZ * (1. / numNodes))
+            << std::endl;
+  std::cout << "Суммарная невязка по EYZ после оптимизации =  "
+            << std::sqrt(MEYZo * (1. / numNodes))
+            << std::endl;
+  std::cout << std::endl;
+  std::cout << "Суммарная невязка по EZX до оптимизации =  "
+            << std::sqrt(MEZX * (1. / numNodes))
+            << std::endl;
+  std::cout << "Суммарная невязка по EZX после оптимизации =  "
+            << std::sqrt(MEZXo * (1. / numNodes))
+            << std::endl;
+  std::cout << std::endl;
+  {
+    // Запись векторов в файл
+    std::ofstream outputFile(workDir + "increments.sba", std::ios::binary);
+
+    if (!outputFile.is_open()) {
+      std::cerr << "Ошибка открытия файла increments.sba" << std::endl;
+      return 1;
+    }
+
+    // Запись deltaSXX
+    outputFile.write(reinterpret_cast<const char *>(deltaSXX.data()),
+                     sizeof(float) * deltaSXX.size());
+
+    // Запись deltaSYY
+    outputFile.write(reinterpret_cast<const char *>(deltaSYY.data()),
+                     sizeof(float) * deltaSYY.size());
+
+    // Запись deltaSZZ
+    outputFile.write(reinterpret_cast<const char *>(deltaSZZ.data()),
+                     sizeof(float) * deltaSZZ.size());
+
+    // Запись deltaSXY
+    outputFile.write(reinterpret_cast<const char *>(deltaSXY.data()),
+                     sizeof(float) * deltaSXY.size());
+
+    // Запись deltaSYZ
+    outputFile.write(reinterpret_cast<const char *>(deltaSYZ.data()),
+                     sizeof(float) * deltaSYZ.size());
+
+    // Запись deltaSZX
+    outputFile.write(reinterpret_cast<const char *>(deltaSZX.data()),
+                     sizeof(float) * deltaSZX.size());
+    // Запись deltaEXX
+    outputFile.write(reinterpret_cast<const char *>(deltaEXX.data()),
+                     sizeof(float) * deltaEXX.size());
+
+    // Запись deltaEYY
+    outputFile.write(reinterpret_cast<const char *>(deltaEYY.data()),
+                     sizeof(float) * deltaEYY.size());
+
+    // Запись deltaEZZ
+    outputFile.write(reinterpret_cast<const char *>(deltaEZZ.data()),
+                     sizeof(float) * deltaEZZ.size());
+
+    // Запись deltaEXY
+    outputFile.write(reinterpret_cast<const char *>(deltaEXY.data()),
+                     sizeof(float) * deltaEXY.size());
+
+    // Запись deltaEYZ
+    outputFile.write(reinterpret_cast<const char *>(deltaEYZ.data()),
+                     sizeof(float) * deltaEYZ.size());
+
+    // Запись deltaEZX
+    outputFile.write(reinterpret_cast<const char *>(deltaEZX.data()),
+                     sizeof(float) * deltaEZX.size());
+
+    outputFile.close();
   }
+  
+  {
+    // Записываем обновленные данные в новый файл
+    std::ofstream out(workDir + "solution0002.sba", std::ofstream::binary);
+    if (!out.good()) {
+      std::cerr << "Ошибка открытия файла solution0002.sba.sba\n";
+      return 1;
+    }
 
-  // Записываем флаги
-  out.write(reinterpret_cast<const char *>(flags.data()),
-            sizeof(int) * flags.size());
+    // Записываем флаги
+    out.write(reinterpret_cast<const char *>(flags.data()),
+              sizeof(int) * flags.size());
 
-  // Записываем массивы (если они присутствуют)
-  for (size_t i = 0; i < 20; ++i) {
-    if (flags[i] == 1) {
-      switch (i) {
-      case 0:
-        out.write(
-            reinterpret_cast<const char *>(solutionData.Temperature.data()),
-            sizeof(float) * numNodes);
-        break;
-      case 1:
-        out.write(reinterpret_cast<const char *>(solutionData.SigmaXX.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 2:
-        out.write(reinterpret_cast<const char *>(solutionData.SigmaYY.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 3:
-        out.write(reinterpret_cast<const char *>(solutionData.SigmaZZ.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 4:
-        out.write(reinterpret_cast<const char *>(solutionData.SigmaXY.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 5:
-        out.write(reinterpret_cast<const char *>(solutionData.SigmaYZ.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 6:
-        out.write(reinterpret_cast<const char *>(solutionData.SigmaZX.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 7:
-        out.write(reinterpret_cast<const char *>(solutionData.SigmaI.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 8:
-        out.write(reinterpret_cast<const char *>(solutionData.Sigma1.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 9:
-        out.write(reinterpret_cast<const char *>(solutionData.Sigma2.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 10:
-        out.write(reinterpret_cast<const char *>(solutionData.Sigma3.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 11:
-        out.write(reinterpret_cast<const char *>(solutionData.DefXX.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 12:
-        out.write(reinterpret_cast<const char *>(solutionData.DefYY.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 13:
-        out.write(reinterpret_cast<const char *>(solutionData.DefZZ.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 14:
-        out.write(reinterpret_cast<const char *>(solutionData.DefXY.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 15:
-        out.write(reinterpret_cast<const char *>(solutionData.DefYZ.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 16:
-        out.write(reinterpret_cast<const char *>(solutionData.DefZX.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 17:
-        out.write(reinterpret_cast<const char *>(solutionData.DefI.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 18:
-        out.write(reinterpret_cast<const char *>(solutionData.DefPlast.data()),
-                  sizeof(float) * numNodes);
-        break;
-      case 19:
-        out.write(reinterpret_cast<const char *>(solutionData.None.data()),
-                  sizeof(float) * numNodes);
-        break;
+    // Записываем массивы (если они присутствуют)
+    for (size_t i = 0; i < 20; ++i) {
+      if (flags[i] == 1) {
+        switch (i) {
+        case 0:
+          out.write(
+              reinterpret_cast<const char *>(solutionData.Temperature.data()),
+              sizeof(float) * numNodes);
+          break;
+        case 1:
+          out.write(reinterpret_cast<const char *>(solutionData.SigmaXX.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 2:
+          out.write(reinterpret_cast<const char *>(solutionData.SigmaYY.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 3:
+          out.write(reinterpret_cast<const char *>(solutionData.SigmaZZ.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 4:
+          out.write(reinterpret_cast<const char *>(solutionData.SigmaXY.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 5:
+          out.write(reinterpret_cast<const char *>(solutionData.SigmaYZ.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 6:
+          out.write(reinterpret_cast<const char *>(solutionData.SigmaZX.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 7:
+          out.write(reinterpret_cast<const char *>(solutionData.SigmaI.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 8:
+          out.write(reinterpret_cast<const char *>(solutionData.Sigma1.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 9:
+          out.write(reinterpret_cast<const char *>(solutionData.Sigma2.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 10:
+          out.write(reinterpret_cast<const char *>(solutionData.Sigma3.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 11:
+          out.write(reinterpret_cast<const char *>(solutionData.DefXX.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 12:
+          out.write(reinterpret_cast<const char *>(solutionData.DefYY.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 13:
+          out.write(reinterpret_cast<const char *>(solutionData.DefZZ.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 14:
+          out.write(reinterpret_cast<const char *>(solutionData.DefXY.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 15:
+          out.write(reinterpret_cast<const char *>(solutionData.DefYZ.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 16:
+          out.write(reinterpret_cast<const char *>(solutionData.DefZX.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 17:
+          out.write(reinterpret_cast<const char *>(solutionData.DefI.data()),
+                    sizeof(float) * numNodes);
+          break;
+        case 18:
+          out.write(
+              reinterpret_cast<const char *>(solutionData.DefPlast.data()),
+              sizeof(float) * numNodes);
+          break;
+        case 19:
+          out.write(reinterpret_cast<const char *>(solutionData.None.data()),
+                    sizeof(float) * numNodes);
+          break;
+        }
       }
     }
   }
-
-  out.close();
+  std::cout << "Вектора приращений успешно записаны в файл increments.sba"
+            << std::endl;
 
   return 0;
 }
