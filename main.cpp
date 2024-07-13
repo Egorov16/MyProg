@@ -6,6 +6,7 @@
 #include <limits>
 #include <map>
 #include <math.h>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -32,9 +33,29 @@ const std::array<Node, 8> integrationPoints{
     Node{commonCrd1, commonCrd1, commonCrd1}     // Точка 7
 };
 
+const std::array<Node, 4> TetrahedronNodes{
+    Node{0, 0, 0}, // Узел 1
+    Node{1, 0, 0}, // Узел 2
+    Node{0, 1, 0}, // Узел 3
+    Node{0, 0, 1}, // Узел 4
+};
+
+const std::array<Node, 10> quadTetrahedronNodes{
+    Node{0, 0, 0},     // Узел 1
+    Node{1, 0, 0},     // Узел 2
+    Node{0, 1, 0},     // Узел 3
+    Node{0, 0, 1},     // Узел 4
+    Node{0.5, 0, 0},   // Узел 5
+    Node{0, 0.5, 0},   // Узел 6
+    Node{0, 0, 0.5},   // Узел 7
+    Node{0.5, 0.5, 0}, // Узел 8
+    Node{0.5, 0, 0.5}, // Узел 9
+    Node{0, 0.5, 0.5}, // Узел 10
+};
+
 using indexes = std::vector<size_t>;
 using Crd = std::vector<Node>;
-enum class Type { hexa8 = 0, hexa20 = 1 };
+enum class Type { hexa8 = 0, hexa20 = 1, tet4 = 2, tet10 = 3 };
 // Структура для конечного элемента
 struct Element {
   Type type;
@@ -45,43 +66,9 @@ using Elems = std::vector<Element>;
 struct SolutionData {
   std::vector<float> Temperature;
   std::vector<float> SigmaXX;
-  std::vector<float> SigmaYY;
-  std::vector<float> SigmaZZ;
-  std::vector<float> SigmaXY;
-  std::vector<float> SigmaYZ;
-  std::vector<float> SigmaZX;
-  std::vector<float> SigmaI;
-  std::vector<float> Sigma1;
-  std::vector<float> Sigma2;
-  std::vector<float> Sigma3;
-  std::vector<float> DefXX;
-  std::vector<float> DefYY;
-  std::vector<float> DefZZ;
-  std::vector<float> DefXY;
-  std::vector<float> DefYZ;
-  std::vector<float> DefZX;
-  std::vector<float> DefI;
-  std::vector<float> DefPlast;
-  std::vector<float> None;
 };
 
-enum class ValueType {
-  CrdX,
-  CrdY,
-  CrdZ,
-  SXX,
-  SYY,
-  SZZ,
-  SXY,
-  SYZ,
-  SZX,
-  EXX,
-  EYY,
-  EZZ,
-  EXY,
-  EYZ,
-  EZX,
-};
+enum class ValueType { CrdX, CrdY, CrdZ, SXX };
 
 struct GaussPointData {
   size_t elementNumber;
@@ -96,39 +83,6 @@ struct GaussPointData {
       // TODO Дописать остальное
     case ValueType::SXX:
       return stress[0];
-      break;
-    case ValueType::SYY:
-      return stress[1];
-      break;
-    case ValueType::SZZ:
-      return stress[2];
-      break;
-    case ValueType::SXY:
-      return stress[3];
-      break;
-    case ValueType::SYZ:
-      return stress[4];
-      break;
-    case ValueType::SZX:
-      return stress[5];
-      break;
-    case ValueType::EXX:
-      return strain[0];
-      break;
-    case ValueType::EYY:
-      return strain[1];
-      break;
-    case ValueType::EZZ:
-      return strain[2];
-      break;
-    case ValueType::EXY:
-      return strain[3];
-      break;
-    case ValueType::EYZ:
-      return strain[4];
-      break;
-    case ValueType::EZX:
-      return strain[5];
       break;
     default:
       return std::numeric_limits<double>::quiet_NaN();
@@ -155,44 +109,9 @@ struct Mesh {
     if (type == ValueType::SXX)
       data.insert(data.end(), solutionData.SigmaXX.cbegin(),
                   solutionData.SigmaXX.cend());
-    else if (type == ValueType::SYY)
-      data.insert(data.end(), solutionData.SigmaYY.cbegin(),
-                  solutionData.SigmaYY.cend());
-    else if (type == ValueType::SZZ)
-      data.insert(data.end(), solutionData.SigmaZZ.cbegin(),
-                  solutionData.SigmaZZ.cend());
-    else if (type == ValueType::SXY)
-      data.insert(data.end(), solutionData.SigmaXY.cbegin(),
-                  solutionData.SigmaXY.cend());
-    else if (type == ValueType::SYZ)
-      data.insert(data.end(), solutionData.SigmaYZ.cbegin(),
-                  solutionData.SigmaYZ.cend());
-    else if (type == ValueType::SZX)
-      data.insert(data.end(), solutionData.SigmaZX.cbegin(),
-                  solutionData.SigmaZX.cend());
-    else if (type == ValueType::EXX)
-      data.insert(data.end(), solutionData.DefXX.cbegin(),
-                  solutionData.DefXX.cend());
-    else if (type == ValueType::EYY)
-      data.insert(data.end(), solutionData.DefYY.cbegin(),
-                  solutionData.DefYY.cend());
-    else if (type == ValueType::EZZ)
-      data.insert(data.end(), solutionData.DefZZ.cbegin(),
-                  solutionData.DefZZ.cend());
-    else if (type == ValueType::EXY)
-      data.insert(data.end(), solutionData.DefXY.cbegin(),
-                  solutionData.DefXY.cend());
-    else if (type == ValueType::EYZ)
-      data.insert(data.end(), solutionData.DefYZ.cbegin(),
-                  solutionData.DefYZ.cend());
-    else if (type == ValueType::EZX)
-      data.insert(data.end(), solutionData.DefZX.cbegin(),
-                  solutionData.DefZX.cend());
-
     else {
       throw std::runtime_error("Unimplemented");
     }
-
     return data;
   }
 
@@ -274,6 +193,66 @@ auto findNearestGPs(const Mesh &mesh, size_t nodeID) {
   return nearest;
 }
 
+double quadcalculateValue(Node localCrd, const std::vector<double> &nodalValues,
+                          const Element &element) {
+
+  assert(element.inds.size() == nodalValues.size());
+  // TODO написать другие типы
+  assert(element.type == Type::hexa20);
+
+  std::vector<double> h(20);
+
+  // Вершины
+  h[0] = 0.125 * (1.0 - localCrd.x) * (1.0 - localCrd.y) * (1.0 - localCrd.z) *
+         (-localCrd.x - localCrd.y - localCrd.z - 2);
+  h[1] = 0.125 * (1.0 + localCrd.x) * (1.0 - localCrd.y) * (1.0 - localCrd.z) *
+         (localCrd.x - localCrd.y - localCrd.z - 2);
+  h[2] = 0.125 * (1.0 + localCrd.x) * (1.0 + localCrd.y) * (1.0 - localCrd.z) *
+         (localCrd.x + localCrd.y - localCrd.z - 2);
+  h[3] = 0.125 * (1.0 - localCrd.x) * (1.0 + localCrd.y) * (1.0 - localCrd.z) *
+         (-localCrd.x + localCrd.y - localCrd.z - 2);
+  h[4] = 0.125 * (1.0 - localCrd.x) * (1.0 - localCrd.y) * (1.0 + localCrd.z) *
+         (-localCrd.x - localCrd.y + localCrd.z - 2);
+  h[5] = 0.125 * (1.0 + localCrd.x) * (1.0 - localCrd.y) * (1.0 + localCrd.z) *
+         (localCrd.x - localCrd.y + localCrd.z - 2);
+  h[6] = 0.125 * (1.0 + localCrd.x) * (1.0 + localCrd.y) * (1.0 + localCrd.z) *
+         (localCrd.x + localCrd.y + localCrd.z - 2);
+  h[7] = 0.125 * (1.0 - localCrd.x) * (1.0 + localCrd.y) * (1.0 + localCrd.z) *
+         (-localCrd.x + localCrd.y + localCrd.z - 2);
+
+  // Ребра
+  h[8] = 0.25 * (1 - localCrd.x * localCrd.x) * (1 - localCrd.y) *
+         (1 + localCrd.z);
+  h[9] = 0.25 * (1 + localCrd.x) * (1 - localCrd.y * localCrd.y) *
+         (1 + localCrd.z);
+  h[10] = 0.25 * (1 - localCrd.x * localCrd.x) * (1 + localCrd.y) *
+          (1 + localCrd.z);
+  h[11] = 0.25 * (1 - localCrd.x) * (1 - localCrd.y * localCrd.y) *
+          (1 + localCrd.z);
+  h[12] = 0.25 * (1 - localCrd.x * localCrd.x) * (1 - localCrd.y) *
+          (1 - localCrd.z);
+  h[13] = 0.25 * (1 + localCrd.x) * (1 - localCrd.y * localCrd.y) *
+          (1 - localCrd.z);
+  h[14] = 0.25 * (1 - localCrd.x * localCrd.x) * (1 + localCrd.y) *
+          (1 - localCrd.z);
+  h[15] = 0.25 * (1 - localCrd.x) * (1 - localCrd.y * localCrd.y) *
+          (1 - localCrd.z);
+  h[16] = 0.25 * (1 + localCrd.x) * (1 + localCrd.y) *
+          (1 - localCrd.z * localCrd.z);
+  h[17] = 0.25 * (1 - localCrd.x) * (1 + localCrd.y) *
+          (1 - localCrd.z * localCrd.z);
+  h[18] = 0.25 * (1 - localCrd.x) * (1 - localCrd.y) *
+          (1 - localCrd.z * localCrd.z);
+  h[19] = 0.25 * (1 + localCrd.x) * (1 - localCrd.y) *
+          (1 - localCrd.z * localCrd.z);
+
+  // Вычисляем значение в точке
+  double value = 0;
+  for (size_t ct = 0, size = h.size(); ct < size; ++ct)
+    value += h[ct] * nodalValues[ct];
+  return value;
+};
+
 double calculateValue(Node localCrd, const std::vector<double> &nodalValues,
                       const Element &element) {
 
@@ -307,6 +286,180 @@ double calculateValue(Node localCrd, const std::vector<double> &nodalValues,
   return value;
 };
 
+double TetrahedroncalculateValue(Node localCrd,
+                                 const std::vector<double> &nodalValues,
+                                 const Element &element) {
+
+  assert(element.inds.size() == nodalValues.size());
+  // TODO написать другие типы
+  assert(element.type == Type::tet4);
+
+  std::vector<double> h(8);
+  {
+    // Координаты узлов тетраэдра
+    double x1 = TetrahedronNodes[0].x;
+    double y1 = TetrahedronNodes[0].y;
+    double z1 = TetrahedronNodes[0].z;
+    double x2 = TetrahedronNodes[1].x;
+    double y2 = TetrahedronNodes[1].y;
+    double z2 = TetrahedronNodes[1].z;
+    double x3 = TetrahedronNodes[2].x;
+    double y3 = TetrahedronNodes[2].y;
+    double z3 = TetrahedronNodes[2].z;
+    double x4 = TetrahedronNodes[3].x;
+    double y4 = TetrahedronNodes[3].y;
+    double z4 = TetrahedronNodes[3].z;
+
+    // Координаты точки внутри тетраэдра
+    double x = localCrd.x;
+    double y = localCrd.y;
+    double z = localCrd.z;
+
+    // Вычисление функций формы
+    std::vector<double> N(4);
+
+    h[0] = ((x2 * y3 * z4 - x2 * z3 * y4 + x3 * y4 * z2 - x3 * y2 * z4 +
+             x4 * y2 * z3 - x4 * y3 * z2) +
+            (y2 * z4 - y3 * z4 + z3 * y4 - y4 * z2 - y2 * z3 + y3 * z2) * x +
+            (x3 * z4 - x2 * z4 + x4 * z2 + x2 * z3 - x3 * z2 - x4 * z3) * y +
+            (-x4 * y2 + x4 * y3 - x2 * y3 - x3 * y4 + x2 * y4 + x3 * y2) * z) /
+           (x1 * (y2 * z4 - y3 * z4 + z3 * y4 - y4 * z2 - y2 * z3 + y3 * z2) +
+            x2 * (-z3 * y4 + y3 * z4 - y3 * z1 + y1 * z3 + y4 * z1 - y1 * z4) +
+            x3 * (y1 * z4 + y4 * z2 - y2 * z4 - y4 * z1 - y1 * z2 + y2 * z1) +
+            x4 * (y2 * z3 + y3 * z1 + y1 * z2 - y2 * z1 - y3 * z2 - y1 * z3));
+
+    h[1] = ((-x1 * y3 * z4 + x1 * z3 * y4 - x3 * y4 * z1 + x3 * y1 * z4 -
+             x4 * y1 * z3 + x4 * y3 * z1) +
+            (-z3 * y4 + y3 * z4 - y3 * z1 + y1 * z3 + y4 * z1 - y1 * z4) * x +
+            (x4 * z3 + x1 * z4 - x3 * z4 - x4 * z1 - x1 * z3 + x3 * z1) * y +
+            (-x4 * y3 + x3 * y4 + x4 * y1 - x1 * y4 - x3 * y1 + x1 * y3) * z) /
+           (x1 * (y2 * z4 - y3 * z4 + z3 * y4 - y4 * z2 - y2 * z3 + y3 * z2) +
+            x2 * (-z3 * y4 + y3 * z4 - y3 * z1 + y1 * z3 + y4 * z1 - y1 * z4) +
+            x3 * (y1 * z4 + y4 * z2 - y2 * z4 - y4 * z1 - y1 * z2 + y2 * z1) +
+            x4 * (y2 * z3 + y3 * z1 + y1 * z2 - y2 * z1 - y3 * z2 - y1 * z3));
+
+    h[2] = ((x2 * y4 * z1 - x4 * y2 * z1 + x1 * y2 * z4 - x1 * y4 * z2 -
+             x2 * y1 * z4 + x4 * y1 * z2) +
+            (y1 * z4 + y4 * z2 - y2 * z4 - y4 * z1 - y1 * z2 + y2 * z1) * x +
+            (-x1 * z4 + x4 * z1 - x2 * z1 + x2 * z4 - x4 * z2 + x1 * z2) * y +
+            (x4 * y2 - x2 * y4 + x1 * y4 + x2 * y1 - x1 * y2 - x4 * y1) * z) /
+           (x1 * (y2 * z4 - y3 * z4 + z3 * y4 - y4 * z2 - y2 * z3 + y3 * z2) +
+            x2 * (-z3 * y4 + y3 * z4 - y3 * z1 + y1 * z3 + y4 * z1 - y1 * z4) +
+            x3 * (y1 * z4 + y4 * z2 - y2 * z4 - y4 * z1 - y1 * z2 + y2 * z1) +
+            x4 * (y2 * z3 + y3 * z1 + y1 * z2 - y2 * z1 - y3 * z2 - y1 * z3));
+
+    h[3] = ((x1 * y3 * z2 - x3 * y1 * z2 - x2 * y3 * z1 + x3 * y2 * z1 +
+             x2 * y1 * z3 - x1 * y2 * z3) +
+            (y2 * z3 + y3 * z1 + y1 * z2 - y2 * z1 - y3 * z2 - y1 * z3) * x +
+            (-x2 * z3 - x1 * z2 + x1 * z3 - x3 * z1 + x2 * z1 + x3 * z2) * y +
+            (x1 * y2 - x2 * y1 - x3 * y2 + x2 * y3 + x3 * y1 - x1 * y3) * z) /
+           (x1 * (y2 * z4 - y3 * z4 + z3 * y4 - y4 * z2 - y2 * z3 + y3 * z2) +
+            x2 * (-z3 * y4 + y3 * z4 - y3 * z1 + y1 * z3 + y4 * z1 - y1 * z4) +
+            x3 * (y1 * z4 + y4 * z2 - y2 * z4 - y4 * z1 - y1 * z2 + y2 * z1) +
+            x4 * (y2 * z3 + y3 * z1 + y1 * z2 - y2 * z1 - y3 * z2 - y1 * z3));
+  }
+
+  // Вычисляем значение в точке
+  double value = 0;
+  for (size_t ct = 0, size = h.size(); ct < size; ++ct)
+    value += h[ct] * nodalValues[ct];
+  return value;
+};
+
+double quadTetrahedroncalculateValue(Node localCrd,
+                                 const std::vector<double> &nodalValues,
+                                 const Element &element) {
+
+  assert(element.inds.size() == nodalValues.size());
+  // TODO написать другие типы
+  assert(element.type == Type::tet10);
+
+  std::vector<double> h(10);
+  {
+    // Координаты узлов тетраэдра
+    double x1 = TetrahedronNodes[0].x;
+    double y1 = TetrahedronNodes[0].y;
+    double z1 = TetrahedronNodes[0].z;
+    double x2 = TetrahedronNodes[1].x;
+    double y2 = TetrahedronNodes[1].y;
+    double z2 = TetrahedronNodes[1].z;
+    double x3 = TetrahedronNodes[2].x;
+    double y3 = TetrahedronNodes[2].y;
+    double z3 = TetrahedronNodes[2].z;
+    double x4 = TetrahedronNodes[3].x;
+    double y4 = TetrahedronNodes[3].y;
+    double z4 = TetrahedronNodes[3].z;
+
+    // Координаты точки внутри тетраэдра
+    double x = localCrd.x;
+    double y = localCrd.y;
+    double z = localCrd.z;
+
+    double L1 =
+        ((x2 * y3 * z4 - x2 * z3 * y4 + x3 * y4 * z2 - x3 * y2 * z4 +
+          x4 * y2 * z3 - x4 * y3 * z2) +
+         (y2 * z4 - y3 * z4 + z3 * y4 - y4 * z2 - y2 * z3 + y3 * z2) * x +
+         (x3 * z4 - x2 * z4 + x4 * z2 + x2 * z3 - x3 * z2 - x4 * z3) * y +
+         (-x4 * y2 + x4 * y3 - x2 * y3 - x3 * y4 + x2 * y4 + x3 * y2) * z) /
+        (x1 * (y2 * z4 - y3 * z4 + z3 * y4 - y4 * z2 - y2 * z3 + y3 * z2) +
+         x2 * (-z3 * y4 + y3 * z4 - y3 * z1 + y1 * z3 + y4 * z1 - y1 * z4) +
+         x3 * (y1 * z4 + y4 * z2 - y2 * z4 - y4 * z1 - y1 * z2 + y2 * z1) +
+         x4 * (y2 * z3 + y3 * z1 + y1 * z2 - y2 * z1 - y3 * z2 - y1 * z3));
+
+    double L2 =
+        ((-x1 * y3 * z4 + x1 * z3 * y4 - x3 * y4 * z1 + x3 * y1 * z4 -
+          x4 * y1 * z3 + x4 * y3 * z1) +
+         (-z3 * y4 + y3 * z4 - y3 * z1 + y1 * z3 + y4 * z1 - y1 * z4) * x +
+         (x4 * z3 + x1 * z4 - x3 * z4 - x4 * z1 - x1 * z3 + x3 * z1) * y +
+         (-x4 * y3 + x3 * y4 + x4 * y1 - x1 * y4 - x3 * y1 + x1 * y3) * z) /
+        (x1 * (y2 * z4 - y3 * z4 + z3 * y4 - y4 * z2 - y2 * z3 + y3 * z2) +
+         x2 * (-z3 * y4 + y3 * z4 - y3 * z1 + y1 * z3 + y4 * z1 - y1 * z4) +
+         x3 * (y1 * z4 + y4 * z2 - y2 * z4 - y4 * z1 - y1 * z2 + y2 * z1) +
+         x4 * (y2 * z3 + y3 * z1 + y1 * z2 - y2 * z1 - y3 * z2 - y1 * z3));
+
+    double L3 =
+        ((x2 * y4 * z1 - x4 * y2 * z1 + x1 * y2 * z4 - x1 * y4 * z2 -
+          x2 * y1 * z4 + x4 * y1 * z2) +
+         (y1 * z4 + y4 * z2 - y2 * z4 - y4 * z1 - y1 * z2 + y2 * z1) * x +
+         (-x1 * z4 + x4 * z1 - x2 * z1 + x2 * z4 - x4 * z2 + x1 * z2) * y +
+         (x4 * y2 - x2 * y4 + x1 * y4 + x2 * y1 - x1 * y2 - x4 * y1) * z) /
+        (x1 * (y2 * z4 - y3 * z4 + z3 * y4 - y4 * z2 - y2 * z3 + y3 * z2) +
+         x2 * (-z3 * y4 + y3 * z4 - y3 * z1 + y1 * z3 + y4 * z1 - y1 * z4) +
+         x3 * (y1 * z4 + y4 * z2 - y2 * z4 - y4 * z1 - y1 * z2 + y2 * z1) +
+         x4 * (y2 * z3 + y3 * z1 + y1 * z2 - y2 * z1 - y3 * z2 - y1 * z3));
+
+    double L4 =
+        ((x1 * y3 * z2 - x3 * y1 * z2 - x2 * y3 * z1 + x3 * y2 * z1 +
+          x2 * y1 * z3 - x1 * y2 * z3) +
+         (y2 * z3 + y3 * z1 + y1 * z2 - y2 * z1 - y3 * z2 - y1 * z3) * x +
+         (-x2 * z3 - x1 * z2 + x1 * z3 - x3 * z1 + x2 * z1 + x3 * z2) * y +
+         (x1 * y2 - x2 * y1 - x3 * y2 + x2 * y3 + x3 * y1 - x1 * y3) * z) /
+        (x1 * (y2 * z4 - y3 * z4 + z3 * y4 - y4 * z2 - y2 * z3 + y3 * z2) +
+         x2 * (-z3 * y4 + y3 * z4 - y3 * z1 + y1 * z3 + y4 * z1 - y1 * z4) +
+         x3 * (y1 * z4 + y4 * z2 - y2 * z4 - y4 * z1 - y1 * z2 + y2 * z1) +
+         x4 * (y2 * z3 + y3 * z1 + y1 * z2 - y2 * z1 - y3 * z2 - y1 * z3));
+
+    // Формулы для функций формы квадратичного тетраэдра
+
+    h[0] = (2 * L1 - 1) * L1; // Вершина 0
+    h[1] = (2 * L2 - 1) * L2; // Вершина 1
+    h[2] = (2 * L3 - 1) * L3; // Вершина 2
+    h[3] = (2 * L4 - 1) * L4; // Вершина 3
+    h[4] = 4 * L1 * L2;       // Средняя точка на ребре 0-1
+    h[5] = 4 * L1 * L3;       // Средняя точка на ребре 0-2
+    h[6] = 4 * L1 * L4;       // Средняя точка на ребре 0-3
+    h[7] = 4 * L2 * L3;       // Средняя точка на ребре 1-2
+    h[8] = 4 * L2 * L4;       // Средняя точка на ребре 1-3
+    h[9] = 4 * L3 * L4;       // Средняя точка на ребре 2-3
+  }
+
+  // Вычисляем значение в точке
+  double value = 0;
+  for (size_t ct = 0, size = h.size(); ct < size; ++ct)
+    value += h[ct] * nodalValues[ct];
+  return value;
+};
+
 // Собрать вектор узловых значений
 std::vector<double> constructNodalData(const Mesh &mesh, size_t elemID,
                                        ValueType vType) {
@@ -324,30 +477,7 @@ std::vector<double> constructNodalData(const Mesh &mesh, size_t elemID,
       data[ct] = mesh.crd[ids[ct]].z;
     else if (vType == ValueType::SXX)
       data[ct] = mesh.solutionData.SigmaXX[ids[ct]];
-    else if (vType == ValueType::SYY)
-      data[ct] = mesh.solutionData.SigmaYY[ids[ct]];
-    else if (vType == ValueType::SZZ)
-      data[ct] = mesh.solutionData.SigmaZZ[ids[ct]];
-    else if (vType == ValueType::SXY)
-      data[ct] = mesh.solutionData.SigmaXY[ids[ct]];
-    else if (vType == ValueType::SYZ)
-      data[ct] = mesh.solutionData.SigmaYZ[ids[ct]];
-    else if (vType == ValueType::SZX)
-      data[ct] = mesh.solutionData.SigmaZX[ids[ct]];
-    else if (vType == ValueType::EXX)
-      data[ct] = mesh.solutionData.DefXX[ids[ct]];
-    else if (vType == ValueType::EYY)
-      data[ct] = mesh.solutionData.DefYY[ids[ct]];
-    else if (vType == ValueType::EZZ)
-      data[ct] = mesh.solutionData.DefZZ[ids[ct]];
-    else if (vType == ValueType::EXY)
-      data[ct] = mesh.solutionData.DefXY[ids[ct]];
-    else if (vType == ValueType::EYZ)
-      data[ct] = mesh.solutionData.DefYZ[ids[ct]];
-    else if (vType == ValueType::EZX)
-      data[ct] = mesh.solutionData.DefZX[ids[ct]];
-
-    else
+    else // TODO дописать остальные поля
       assert(false);
   }
   return data;
@@ -374,9 +504,85 @@ std::pair<double, double> calculateError(const Mesh &mesh, size_t elemId,
 
 typedef dlib::matrix<double, 0, 1> column_vector;
 
+double norm(const column_vector &v) { return sqrt(dot(v, v)); }
+
+typedef dlib::matrix<double, 0, 1> column_vector;
+
+double dot(const column_vector &a, const column_vector &b) {
+  double sum = 0;
+  for (size_t i = 0; i < a.size(); ++i) {
+    sum += a(i) * b(i);
+  }
+  return sum;
+}
+
+typedef dlib::matrix<double, 0, 1> column_vector;
+
+// Функция оптимизации методом сопряжённого градиента
+
+column_vector conjugateGradientDescent(
+    const std::function<double(const column_vector &)> &func,
+    const column_vector &initial_deltas, double tolerance, int max_iterations) {
+  column_vector x = initial_deltas;
+  column_vector grad(x.size());
+  column_vector d(x.size());
+  column_vector grad_prev(
+      x.size()); // Добавили переменную для предыдущего градиента
+
+  // Вычисление начального градиента
+  double h = 1e-6;
+  for (size_t i = 0; i < x.size(); ++i) {
+    column_vector x_plus_h = x;
+    x_plus_h(i) += h;
+    grad(i) = (func(x_plus_h) - func(x)) / h;
+  }
+
+  d = -grad;
+  grad_prev = grad; // Инициализировали grad_prev
+
+  int iteration = 0;
+  while (iteration < max_iterations) {
+    // Вычисление шага alpha
+    double alpha = 1.0;
+    double f_x = func(x);
+
+    while (func(x + alpha * d) > f_x && alpha > 1e-10) {
+      alpha /= 2.0;
+    }
+
+    // Обновление значения x
+    x = x + alpha * d;
+
+    // Вычисление нового градиента
+    for (size_t i = 0; i < x.size(); ++i) {
+      column_vector x_plus_h = x;
+      x_plus_h(i) += h;
+      grad(i) = (func(x_plus_h) - func(x)) / h;
+    }
+
+    // Обновление направления спуска
+    double beta =
+        dot(grad, grad) / dot(grad_prev, grad_prev); // Исправленная формула
+    d = -grad + beta * d;
+
+    // Сохранение предыдущего градиента
+    grad_prev = grad;
+
+    // Проверка условия останова
+    if (norm(grad) <= tolerance) {
+      break;
+    }
+
+    iteration++;
+  }
+
+  return x;
+}
+
+typedef dlib::matrix<double, 0, 1> column_vector;
+
 // Функция пробует улучшить узловое значение в узле nodeID
-double tryToImproove(const Mesh &mesh, size_t nodeId, ValueType type,
-                     double &N1, double &N2) {
+double tryToImproove(const Mesh &mesh, size_t nodeId, ValueType type) {
 
   // Найти все узлы, соседние с целевым
   indexes indsToVariate;
@@ -393,7 +599,6 @@ double tryToImproove(const Mesh &mesh, size_t nodeId, ValueType type,
   indsToVariate.erase(pos, indsToVariate.end());
 
   // Создать функцию невязки
-
   auto func = [&](const column_vector &deltas) {
     // Вычислить среднеквадратическое отклонение
     // Копия узлового вектора
@@ -430,388 +635,74 @@ double tryToImproove(const Mesh &mesh, size_t nodeId, ValueType type,
   for (auto &d : deltas)
     d = 0;
 
-  N1 += func(deltas);
+  std::cout << std::endl;
+  std::cout << "Невязка до оптимизации: " << func(deltas) << std::endl;
+  std::cout << std::endl;
 
-  find_min_using_approximate_derivatives(
-      dlib::bfgs_search_strategy(), dlib::objective_delta_stop_strategy(1e-7),
-      func, deltas, -1);
+  // Вызов градиентного спуска
+  deltas = conjugateGradientDescent(func, deltas, 1e-7, 100);
 
-  N2 += func(deltas);
+  std::cout << "Невязка после оптимизации: " << func(deltas) << std::endl;
 
   auto pas = std::find(indsToVariate.cbegin(), indsToVariate.cend(), nodeId);
 
   assert(pas != indsToVariate.cend());
 
   return deltas(pas - indsToVariate.cbegin());
-
 }
 
 std::vector<int> flags(20);
 
 int main(int numArgs, char **args) {
-  // Не понимаю зачем это
+
   setlocale(LC_ALL, "rus");
 
   // Путь по умолчанию
+
   std::string workDir = "";
+
   // В аргументах передан каталог
+
   if (numArgs == 2) {
+
     // Передан рабочий каталог
+
     workDir = std::string(args[1]) + "/";
   }
+
   // В аргументах явно ошибка
   if (numArgs > 2)
     throw std::runtime_error("Wrong number of params. Should be 0 or 1 (path)");
 
-  auto mesh = readMesh(workDir);
+  const auto mesh = readMesh(workDir);
   auto &crd = mesh.crd;
   auto elems = mesh.elems;
-  auto &solutionData = mesh.solutionData;
+  auto solutionData = mesh.solutionData;
   const size_t numNodes = crd.size();
 
   checkData(mesh);
 
-  std::vector<float> deltaSXX;
-  std::vector<float> deltaSYY;
-  std::vector<float> deltaSZZ;
-  std::vector<float> deltaSXY;
-  std::vector<float> deltaSYZ;
-  std::vector<float> deltaSZX;
-  std::vector<float> deltaEXX;
-  std::vector<float> deltaEYY;
-  std::vector<float> deltaEZZ;
-  std::vector<float> deltaEXY;
-  std::vector<float> deltaEYZ;
-  std::vector<float> deltaEZX;
-
-  double MSXX = 0;
-  double MSXXo = 0;
-  double MSYY = 0;
-  double MSYYo = 0;
-  double MSZZ = 0;
-  double MSZZo = 0;
-  double MSXY = 0;
-  double MSXYo = 0;
-  double MSYZ = 0;
-  double MSYZo = 0;
-  double MSZX = 0;
-  double MSZXo = 0;
-  double MEXX = 0;
-  double MEXXo = 0;
-  double MEYY = 0;
-  double MEYYo = 0;
-  double MEZZ = 0;
-  double MEZZo = 0;
-  double MEXY = 0;
-  double MEXYo = 0;
-  double MEYZ = 0;
-  double MEYZo = 0;
-  double MEZX = 0;
-  double MEZXo = 0;
-
-  int k = 0;
+  int i = 0;
 
   // Цикл по каждому узлу и минимизация ошибки
   for (size_t nodeID = 0; nodeID < numNodes; ++nodeID) {
-    // Обновляем  значения  напрямую
-    solutionData.SigmaXX[nodeID] += static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::SXX, MSXX, MSXXo));
-    solutionData.SigmaYY[nodeID] += static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::SYY, MSYY, MSYYo));
-    solutionData.SigmaZZ[nodeID] += static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::SZZ, MSZZ, MSZZo));
-    solutionData.SigmaXY[nodeID] += static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::SXY, MSXY, MSXYo));
-    solutionData.SigmaYZ[nodeID] += static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::SYZ, MSYZ, MSYZo));
-    solutionData.SigmaZX[nodeID] += static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::SZX, MSZX, MSZXo));
-    solutionData.DefXX[nodeID] += static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::EXX, MEXX, MEXXo));
-    solutionData.DefYY[nodeID] += static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::EYY, MEYY, MEYYo));
-    solutionData.DefZZ[nodeID] += static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::EZZ, MEZZ, MEZZo));
-    solutionData.DefXY[nodeID] += static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::EXY, MEXY, MEXYo));
-    solutionData.DefYZ[nodeID] += static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::EYZ, MEYZ, MEYZo));
-    solutionData.DefZX[nodeID] += static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::EZX, MEZX, MEZXo));
-
-    // Вычисляем  приращения  для  текущего  узла
-    deltaSXX.push_back(static_cast<float>(tryToImproove(
-        mesh, nodeID, ValueType::SXX, MSXX, MSXXo)));
-    deltaSYY.push_back(static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::SYY, MSYY, MSYYo)));
-    deltaSZZ.push_back(static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::SZZ, MSZZ, MSZZo)));
-    deltaSXY.push_back(static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::SXY, MSXY, MSXYo)));
-    deltaSYZ.push_back(static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::SYZ, MSYZ, MSYZo)));
-    deltaSZX.push_back(static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::SZX, MSZX, MSZXo)));
-    deltaEXX.push_back(static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::EXX, MEXX, MEXXo)));
-    deltaEYY.push_back(static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::EYY, MEYY, MEYYo)));
-    deltaEZZ.push_back(static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::EZZ, MEZZ, MEZZo)));
-    deltaEXY.push_back(static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::EXY, MEXY, MEXYo)));
-    deltaEYZ.push_back(static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::EYZ, MEYZ, MEYZo)));
-    deltaEZX.push_back(static_cast<float>(
-        tryToImproove(mesh, nodeID, ValueType::EZX, MEZX, MEZXo)));
+    if (i == 10) {
+      break;
+    }
+    std::cout << std::endl;
+    std::cout << "До оптимизации: " << solutionData.SigmaXX[nodeID]
+              << std::endl;
+    auto delta =
+        static_cast<float>(tryToImproove(mesh, nodeID, ValueType::SXX));
+    std::cout << std::endl;
+    solutionData.SigmaXX[nodeID] += delta;
+    std::cout << "Напряжение после оптимизации: "
+              << solutionData.SigmaXX[nodeID] << std::endl;
+    std::cout << std::endl;
+    i++;
   }
 
-  std::cout << "Суммарная невязка по SXX до оптимизации =  " << std::sqrt(MSXX* (1./ numNodes))
-            << std::endl;
-  std::cout << "Суммарная невязка по SXX после оптимизации =  "
-            << std::sqrt(MSXXo * (1. / numNodes))
-            << std::endl;
-  std::cout << std::endl;
-  std::cout << "Суммарная невязка по SYY до оптимизации =  "
-            << std::sqrt(MSYY * (1. / numNodes))
-            << std::endl;
-  std::cout << "Суммарная невязка по SYY после оптимизации =  "
-            << std::sqrt(MSYYo * (1. / numNodes))
-            << std::endl;
-  std::cout << std::endl;
-  std::cout << "Суммарная невязка по SZZ до оптимизации =  "
-            << std::sqrt(MSZZ * (1. / numNodes))
-            << std::endl;
-  std::cout << "Суммарная невязка по SZZ после оптимизации =  "
-            << std::sqrt(MSZZo * (1. / numNodes))
-            << std::endl;
-  std::cout << std::endl;
-  std::cout << "Суммарная невязка по SXY до оптимизации =  "
-            << std::sqrt(MSXY * (1. / numNodes))
-            << std::endl;
-  std::cout << "Суммарная невязка по SXY после оптимизации =  "
-            << std::sqrt(MSXYo * (1. / numNodes))
-            << std::endl;
-  std::cout << std::endl;
-  std::cout << "Суммарная невязка по SYZ до оптимизации =  "
-            << std::sqrt(MSYZ * (1. / numNodes))
-            << std::endl;
-  std::cout << "Суммарная невязка по SYZ после оптимизации =  "
-            << std::sqrt(MSYZo * (1. / numNodes))
-            << std::endl;
-  std::cout << std::endl;
-  std::cout << "Суммарная невязка по SZX до оптимизации =  "
-            << std::sqrt(MSZX * (1. / numNodes))
-            << std::endl;
-  std::cout << "Суммарная невязка по SZX после оптимизации =  "
-            << std::sqrt(MSZXo * (1. / numNodes))
-            << std::endl;
-  std::cout << std::endl;
-  std::cout << "Суммарная невязка по EXX до оптимизации =  "
-            << std::sqrt(MEXX * (1. / numNodes))
-            << std::endl;
-  std::cout << "Суммарная невязка по EXX после оптимизации =  "
-            << std::sqrt(MEXXo * (1. / numNodes))
-            << std::endl;
-  std::cout << std::endl;
-  std::cout << "Суммарная невязка по EYY до оптимизации =  "
-            << std::sqrt(MEYY * (1. / numNodes))
-            << std::endl;
-  std::cout << "Суммарная невязка по EYY после оптимизации =  "
-            << std::sqrt(MEYYo * (1. / numNodes))
-            << std::endl;
-  std::cout << std::endl;
-  std::cout << "Суммарная невязка по EZZ до оптимизации =  "
-            << std::sqrt(MEZZ * (1. / numNodes))
-            << std::endl;
-  std::cout << "Суммарная невязка по EZZ после оптимизации =  "
-            << std::sqrt(MEZZo * (1. / numNodes))
-            << std::endl;
-  std::cout << std::endl;
-  std::cout << "Суммарная невязка по EXY до оптимизации =  "
-            << std::sqrt(MEXY * (1. / numNodes))
-            << std::endl;
-  std::cout << "Суммарная невязка по EXY после оптимизации =  "
-            << std::sqrt(MEXYo * (1. / numNodes))
-            << std::endl;
-  std::cout << std::endl;
-  std::cout << "Суммарная невязка по EYZ до оптимизации =  "
-            << std::sqrt(MEYZ * (1. / numNodes))
-            << std::endl;
-  std::cout << "Суммарная невязка по EYZ после оптимизации =  "
-            << std::sqrt(MEYZo * (1. / numNodes))
-            << std::endl;
-  std::cout << std::endl;
-  std::cout << "Суммарная невязка по EZX до оптимизации =  "
-            << std::sqrt(MEZX * (1. / numNodes))
-            << std::endl;
-  std::cout << "Суммарная невязка по EZX после оптимизации =  "
-            << std::sqrt(MEZXo * (1. / numNodes))
-            << std::endl;
-  std::cout << std::endl;
-  {
-    // Запись векторов в файл
-    std::ofstream outputFile(workDir + "increments.sba", std::ios::binary);
-
-    if (!outputFile.is_open()) {
-      std::cerr << "Ошибка открытия файла increments.sba" << std::endl;
-      return 1;
-    }
-
-    // Запись deltaSXX
-    outputFile.write(reinterpret_cast<const char *>(deltaSXX.data()),
-                     sizeof(float) * deltaSXX.size());
-
-    // Запись deltaSYY
-    outputFile.write(reinterpret_cast<const char *>(deltaSYY.data()),
-                     sizeof(float) * deltaSYY.size());
-
-    // Запись deltaSZZ
-    outputFile.write(reinterpret_cast<const char *>(deltaSZZ.data()),
-                     sizeof(float) * deltaSZZ.size());
-
-    // Запись deltaSXY
-    outputFile.write(reinterpret_cast<const char *>(deltaSXY.data()),
-                     sizeof(float) * deltaSXY.size());
-
-    // Запись deltaSYZ
-    outputFile.write(reinterpret_cast<const char *>(deltaSYZ.data()),
-                     sizeof(float) * deltaSYZ.size());
-
-    // Запись deltaSZX
-    outputFile.write(reinterpret_cast<const char *>(deltaSZX.data()),
-                     sizeof(float) * deltaSZX.size());
-    // Запись deltaEXX
-    outputFile.write(reinterpret_cast<const char *>(deltaEXX.data()),
-                     sizeof(float) * deltaEXX.size());
-
-    // Запись deltaEYY
-    outputFile.write(reinterpret_cast<const char *>(deltaEYY.data()),
-                     sizeof(float) * deltaEYY.size());
-
-    // Запись deltaEZZ
-    outputFile.write(reinterpret_cast<const char *>(deltaEZZ.data()),
-                     sizeof(float) * deltaEZZ.size());
-
-    // Запись deltaEXY
-    outputFile.write(reinterpret_cast<const char *>(deltaEXY.data()),
-                     sizeof(float) * deltaEXY.size());
-
-    // Запись deltaEYZ
-    outputFile.write(reinterpret_cast<const char *>(deltaEYZ.data()),
-                     sizeof(float) * deltaEYZ.size());
-
-    // Запись deltaEZX
-    outputFile.write(reinterpret_cast<const char *>(deltaEZX.data()),
-                     sizeof(float) * deltaEZX.size());
-
-    outputFile.close();
-  }
-  
-  {
-    // Записываем обновленные данные в новый файл
-    std::ofstream out(workDir + "solution0002.sba", std::ofstream::binary);
-    if (!out.good()) {
-      std::cerr << "Ошибка открытия файла solution0002.sba.sba\n";
-      return 1;
-    }
-
-    // Записываем флаги
-    out.write(reinterpret_cast<const char *>(flags.data()),
-              sizeof(int) * flags.size());
-
-    // Записываем массивы (если они присутствуют)
-    for (size_t i = 0; i < 20; ++i) {
-      if (flags[i] == 1) {
-        switch (i) {
-        case 0:
-          out.write(
-              reinterpret_cast<const char *>(solutionData.Temperature.data()),
-              sizeof(float) * numNodes);
-          break;
-        case 1:
-          out.write(reinterpret_cast<const char *>(solutionData.SigmaXX.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 2:
-          out.write(reinterpret_cast<const char *>(solutionData.SigmaYY.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 3:
-          out.write(reinterpret_cast<const char *>(solutionData.SigmaZZ.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 4:
-          out.write(reinterpret_cast<const char *>(solutionData.SigmaXY.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 5:
-          out.write(reinterpret_cast<const char *>(solutionData.SigmaYZ.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 6:
-          out.write(reinterpret_cast<const char *>(solutionData.SigmaZX.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 7:
-          out.write(reinterpret_cast<const char *>(solutionData.SigmaI.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 8:
-          out.write(reinterpret_cast<const char *>(solutionData.Sigma1.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 9:
-          out.write(reinterpret_cast<const char *>(solutionData.Sigma2.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 10:
-          out.write(reinterpret_cast<const char *>(solutionData.Sigma3.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 11:
-          out.write(reinterpret_cast<const char *>(solutionData.DefXX.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 12:
-          out.write(reinterpret_cast<const char *>(solutionData.DefYY.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 13:
-          out.write(reinterpret_cast<const char *>(solutionData.DefZZ.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 14:
-          out.write(reinterpret_cast<const char *>(solutionData.DefXY.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 15:
-          out.write(reinterpret_cast<const char *>(solutionData.DefYZ.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 16:
-          out.write(reinterpret_cast<const char *>(solutionData.DefZX.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 17:
-          out.write(reinterpret_cast<const char *>(solutionData.DefI.data()),
-                    sizeof(float) * numNodes);
-          break;
-        case 18:
-          out.write(
-              reinterpret_cast<const char *>(solutionData.DefPlast.data()),
-              sizeof(float) * numNodes);
-          break;
-        case 19:
-          out.write(reinterpret_cast<const char *>(solutionData.None.data()),
-                    sizeof(float) * numNodes);
-          break;
-        }
-      }
-    }
-  }
-  std::cout << "Вектора приращений успешно записаны в файл increments.sba"
-            << std::endl;
+  std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << std::endl;
 
   return 0;
 }
@@ -859,6 +750,7 @@ Mesh readMesh(const std::string &prefix) {
 
     int indexElem = 0;
     for (auto t : types) {
+      // TODO добавить остальные типы
       Type type = Type::hexa8;
       size_t indLength;
       if (t.first == 0) {
@@ -893,10 +785,10 @@ Mesh readMesh(const std::string &prefix) {
   auto numNodes = crd.size();
   auto &solutionData = mesh.solutionData;
   {
-    std::ifstream in(prefix + "solution0001.sba", std::ifstream::binary);
+    std::ifstream in(prefix + "solution0002.sba", std::ifstream::binary);
 
     if (!in.good())
-      std::runtime_error("Ошибка открытия файла solution0001.sba");
+      std::runtime_error("Ошибка открытия файла solution0002.sba");
 
     // Читаем флаги
     in.read((char *)(flags.data()), sizeof(int) * flags.size());
@@ -914,60 +806,6 @@ Mesh readMesh(const std::string &prefix) {
           break;
         case 1:
           solutionData.SigmaXX = data;
-          break;
-        case 2:
-          solutionData.SigmaYY = data;
-          break;
-        case 3:
-          solutionData.SigmaZZ = data;
-          break;
-        case 4:
-          solutionData.SigmaXY = data;
-          break;
-        case 5:
-          solutionData.SigmaYZ = data;
-          break;
-        case 6:
-          solutionData.SigmaZX = data;
-          break;
-        case 7:
-          solutionData.SigmaI = data;
-          break;
-        case 8:
-          solutionData.Sigma1 = data;
-          break;
-        case 9:
-          solutionData.Sigma2 = data;
-          break;
-        case 10:
-          solutionData.Sigma3 = data;
-          break;
-        case 11:
-          solutionData.DefXX = data;
-          break;
-        case 12:
-          solutionData.DefYY = data;
-          break;
-        case 13:
-          solutionData.DefZZ = data;
-          break;
-        case 14:
-          solutionData.DefXY = data;
-          break;
-        case 15:
-          solutionData.DefYZ = data;
-          break;
-        case 16:
-          solutionData.DefZX = data;
-          break;
-        case 17:
-          solutionData.DefI = data;
-          break;
-        case 18:
-          solutionData.DefPlast = data;
-          break;
-        case 19:
-          solutionData.None = data;
           break;
         }
       }
